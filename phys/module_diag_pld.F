@@ -113,6 +113,7 @@ CONTAINS
                ght_pl(i,kp,j) = missing
                s_pl  (i,kp,j) = missing
                td_pl (i,kp,j) = missing
+               q_pl  (i,kp,j) = missing
                ! L. Fita. CIMA. March 2018 - CORDEX
                hus_pl  (i,kp,j) = missing
                w_pl  (i,kp,j) = missing
