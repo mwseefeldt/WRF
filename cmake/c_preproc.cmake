@@ -29,6 +29,7 @@ macro( wrf_c_preproc_fortran )
   # Generate compile command and file outputs
   set( WRF_PP_F_OUTPUT   )
   set( WRF_PP_F_COMMANDS )
+  set( WRF_PP_F_DEPENDS  )
   foreach( WRF_PP_F_SOURCE_FILE  ${WRF_PP_F_SOURCES} )
     get_filename_component( WRF_PP_F_INPUT_SOURCE           ${WRF_PP_F_SOURCE_FILE} REALPATH )
     get_filename_component( WRF_PP_F_INPUT_SOURCE_FILE_ONLY ${WRF_PP_F_SOURCE_FILE} NAME     )
@@ -52,6 +53,10 @@ macro( wrf_c_preproc_fortran )
           APPEND WRF_PP_F_OUTPUT
           ${WRF_PP_F_OUTPUT_FILE}
           )
+    list(
+          APPEND WRF_PP_F_DEPENDS
+          ${WRF_PP_F_INPUT_SOURCE}
+          )
     
     # # Tell all targets that eventually use this file that it is generated - this is useful if this macro is used in a
     # # different directory than where the target dependency is set
@@ -60,19 +65,13 @@ macro( wrf_c_preproc_fortran )
     # # It keeps getting better lol
     # # https://gitlab.kitware.com/cmake/cmake/-/issues/18399
     # # We could use cmake 3.20+ and CMP0118, but this allows usage from 3.18.6+
-    # TL;DR - This doesn't work despite all documentation stating otherwise, need to use CMP0118
-    # set_source_files_properties(
-    #                             ${WRF_PP_F_OUTPUT_FILE}
-    #                             ${WRF_PP_F_TARGET_DIRECTORY}
-    #                             PROPERTIES
-    #                               GENERATED TRUE
-    #                             )
     set_source_files_properties(
                                 ${WRF_PP_F_OUTPUT_FILE}
                                 DIRECTORY ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
                                 ${WRF_PP_F_TARGET_DIRECTORY}
                                 PROPERTIES
                                   Fortran_PREPROCESS OFF
+                                  GENERATED          TRUE
                                 )
     # message( STATUS "File ${WRF_PP_F_SOURCE_FILE} will be preprocessed into ${WRF_PP_F_OUTPUT_FILE}" )
 
@@ -84,7 +83,7 @@ macro( wrf_c_preproc_fortran )
                       COMMAND ${CMAKE_COMMAND} -E  make_directory ${WRF_PP_F_OUTPUT_DIR}
                       ${WRF_PP_F_COMMANDS}
                       COMMENT "Preprocessing ${WRF_PP_F_TARGET_NAME}"
-                      DEPENDS ${WRF_PP_F_DEPENDENCIES}
+                      DEPENDS ${WRF_PP_F_DEPENDENCIES} ${WRF_PP_F_DEPENDS}
                       )
 
   add_custom_target(
