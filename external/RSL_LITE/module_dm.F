@@ -98,20 +98,45 @@ CONTAINS
    SUBROUTINE MPASPECT( P, MINM, MINN, PROCMIN_M, PROCMIN_N )
       IMPLICIT NONE
       INTEGER P, M, N, MINI, MINM, MINN, PROCMIN_M, PROCMIN_N
+      !-----------------------------------------------------
+      ! RASM: additional variables for check below
+      REAL MINR,VALR,ARW,PEW
+      MINR = 1.0e12
+      !-----------------------------------------------------
       MINI = 2*P
       MINM = 1
       MINN = P
       DO M = 1, P
         IF ( MOD( P, M ) .EQ. 0 ) THEN
           N = P / M
-          IF ( ABS(M-N) .LT. MINI                &
-               .AND. M .GE. PROCMIN_M            &
-               .AND. N .GE. PROCMIN_N            &
-             ) THEN
-            MINI = ABS(M-N)
-            MINM = M
-            MINN = N
-          END IF
+          !-------------------------------------------------
+          ! RASM: 
+          IF (M .GT. 0 .and. N .GT. 0) then
+            ! tcraig old function
+            !VALR = real(ABS(M-N))
+            ! tcraig new function, not tested yet
+            ARW =  1.0
+            PEW = 20.0
+            VALR = ARW*(real(M)/real(N) + real(N)/real(M)-2.0) + PEW*(real(M*N)/real(P)-1.0)
+            IF ( VALR .LT. MINR                &
+                 .AND. M .GE. PROCMIN_M        &
+                 .AND. N .GE. PROCMIN_N        &
+                ) THEN
+              MINR = VALR
+              MINM = M
+              MINN = N
+            ENDIF
+          ENDIF
+          ! original check/solution from WRF release
+          !IF ( ABS(M-N) .LT. MINI                &
+          !     .AND. M .GE. PROCMIN_M            &
+          !     .AND. N .GE. PROCMIN_N            &
+          !   ) THEN
+          !  MINI = ABS(M-N)
+          !  MINM = M
+          !  MINN = N
+          !END IF
+          !-------------------------------------------------
         END IF
       END DO
       IF ( MINM .LT. PROCMIN_M .OR. MINN .LT. PROCMIN_N ) THEN

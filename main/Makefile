@@ -4,7 +4,7 @@ LN      =       ln -sf
 MAKE    =       make -i -r
 RM      =       rm -f
 
-MODULES =  module_wrf_top.F
+MODULES =  atm_comp_mct.F module_wrf_top.F wrf_instance.F
 
 OBJS    =
 
@@ -12,17 +12,17 @@ LIBPATHS =
 
 include ../configure.wrf
 
-$(SOLVER)_wrf : wrf.o ../main/module_wrf_top.o
+$(SOLVER)_wrf : wrf.o atm_comp_mct.o
 	$(RANLIB) $(RLFLAGS) $(LIBWRFLIB)
-	$(LD) -o wrf.exe $(LDFLAGS) wrf.o ../main/module_wrf_top.o $(LIBWRFLIB) $(CMAQLIB) $(LIB) 
+	$(LD) -o wrf.exe $(LDFLAGS) wrf.o atm_comp_mct.o $(LIBWRFLIB) $(CMAQLIB) $(LIB) 
 
 $(SOLVER)_wrfplus : wrf.o ../main/module_wrf_top.o
 	$(RANLIB) $(RLFLAGS) $(LIBWRFLIB)
-	$(LD) -o wrfplus.exe $(LDFLAGS) wrf.o ../main/module_wrf_top.o $(LIBWRFLIB) $(LIB)
+	$(LD) -o wrfplus.exe $(LDFLAGS) wrf.o atm_comp_mct.o $(LIBWRFLIB) $(LIB)
 
-$(SOLVER)_wrf_SST_ESMF : wrf_ESMFMod.o wrf_SST_ESMF.o ../main/module_wrf_top.o
+$(SOLVER)_wrf_SST_ESMF : wrf_ESMFMod.o wrf_SST_ESMF.o atm_comp_mct.o
 	$(RANLIB) $(RLFLAGS) $(LIBWRFLIB)
-	$(LD) -o wrf_SST_ESMF.exe $(LDFLAGS) wrf_SST_ESMF.o wrf_ESMFMod.o ../main/module_wrf_top.o $(LIBWRFLIB) $(LIB)
+	$(LD) -o wrf_SST_ESMF.exe $(LDFLAGS) wrf_SST_ESMF.o wrf_ESMFMod.o atm_comp_mct.o $(LIBWRFLIB) $(LIB)
 
 $(SOLVER)_ideal : module_initialize ideal_$(SOLVER).o
 	$(RANLIB) $(RLFLAGS) $(LIBWRFLIB)

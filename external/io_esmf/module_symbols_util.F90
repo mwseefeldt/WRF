@@ -44,13 +44,18 @@
 !5.2.0r        USE ESMF, WRFU_CALENDARTYPE => ESMF_CALENDARTYPE
         USE ESMF, WRFU_CALENDARVALIDATE => ESMF_CALENDARVALIDATE
         USE ESMF, WRFU_CALENDARWRITERESTART => ESMF_CALENDARWRITERESTART
-        USE ESMF, WRFU_CAL_360DAY => ESMF_CALKIND_360DAY            ! 5.2.0r
-        USE ESMF, WRFU_CAL_CUSTOM => ESMF_CALKIND_CUSTOM            ! 5.2.0r
-        USE ESMF, WRFU_CAL_GREGORIAN => ESMF_CALKIND_GREGORIAN      ! 5.2.0r
-        USE ESMF, WRFU_CAL_JULIAN => ESMF_CALKIND_JULIAN            ! 5.2.0r
-        USE ESMF, WRFU_CAL_JULIANDAY => ESMF_CALKIND_JULIANDAY      ! 5.2.0r
-        USE ESMF, WRFU_CAL_NOCALENDAR => ESMF_CALKIND_NOCALENDAR    ! 5.2.0r
-        USE ESMF, WRFU_CAL_NOLEAP => ESMF_CALKIND_NOLEAP            ! 5.2.0r
+        !--------------------------------------------------------------
+        ! RASM: added the following two lines and commented out the following seven lines
+        USE ESMF, WRFU_CALKIND_GREGORIAN => ESMF_CALKIND_GREGORIAN      ! 5.2.0r
+        USE ESMF, WRFU_CALKIND_NOLEAP => ESMF_CALKIND_NOLEAP            ! 5.2.0r
+        !USE ESMF, WRFU_CAL_360DAY => ESMF_CALKIND_360DAY            ! 5.2.0r
+        !USE ESMF, WRFU_CAL_CUSTOM => ESMF_CALKIND_CUSTOM            ! 5.2.0r
+        !USE ESMF, WRFU_CAL_GREGORIAN => ESMF_CALKIND_GREGORIAN      ! 5.2.0r
+        !USE ESMF, WRFU_CAL_JULIAN => ESMF_CALKIND_JULIAN            ! 5.2.0r
+        !USE ESMF, WRFU_CAL_JULIANDAY => ESMF_CALKIND_JULIANDAY      ! 5.2.0r
+        !USE ESMF, WRFU_CAL_NOCALENDAR => ESMF_CALKIND_NOCALENDAR    ! 5.2.0r
+        !USE ESMF, WRFU_CAL_NOLEAP => ESMF_CALKIND_NOLEAP            ! 5.2.0r
+        !--------------------------------------------------------------
 
         USE ESMF, WRFU_CLOCK => ESMF_CLOCK
         USE ESMF, WRFU_CLOCKADVANCE => ESMF_CLOCKADVANCE

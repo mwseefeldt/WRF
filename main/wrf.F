@@ -3,6 +3,13 @@
 
 PROGRAM wrf
 
+!--------------------------------------------------------------------
+! RASM: Remove this progression through WRF in lieu of it being handled 
+!       elsewhere with the RASM coupling
+!--------------------------------------------------------------------
+#ifdef RASMCOUPLED
+
+#else
    USE module_wrf_top, only : wrf_init, wrf_dfi, wrf_run, wrf_finalize
 #if ( WRFPLUS == 1 )
    USE module_wrf_top, only : config_flags, wrf_adtl_check, &
@@ -55,6 +62,7 @@ PROGRAM wrf
 
   ! WRF model clean-up.  This calls MPI_FINALIZE() for DM parallel runs.  
   CALL wrf_finalize
+#endif  ! enf of RASMCOUPLED IFDEF
 
 END PROGRAM wrf
 

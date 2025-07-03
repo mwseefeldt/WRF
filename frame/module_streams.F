@@ -29,6 +29,8 @@ MODULE module_streams
   INTEGER, PARAMETER :: MAX_WRF_ALARMS    = COMPUTE_VORTEX_CENTER_ALARM  ! WARNING:  MAX_WRF_ALARMS must be
                                                                          ! large enough to include all of
                                                                          ! the alarms declared above.
+  LOGICAL :: RESTART_NOW = .false.   ! RASM (Juanxiong He): set separately RESTART_ALARM (from RASM)
+  LOGICAL :: END_NOW = .false.       ! RASM (Juanxiong He): set separately END OF RUN (from RASM)
 
   CONTAINS
     SUBROUTINE init_module_streams

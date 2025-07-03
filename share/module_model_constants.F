@@ -110,7 +110,8 @@
        REAL , PARAMETER ::  gma=-r_d*(1.-rcp)*0.5
        REAL , PARAMETER ::  p400=40000.0
        REAL , PARAMETER ::  phitp=15000.0
-       REAL , PARAMETER ::  pi2=2.*3.1415926, pi1=3.1415926
+       REAL , PARAMETER ::  pi1=   3.14159265358979323846  ! RASM: increase precision of pi (match CESM)
+       REAL , PARAMETER ::  pi2=2.*3.14159265358979323846  ! RASM: increase precision of pi (match CESM)
        REAL , PARAMETER ::  plbtm=105000.0
        REAL , PARAMETER ::  plomd=64200.0
        REAL , PARAMETER ::  pmdhi=35000.0
@@ -138,6 +139,7 @@
    !REAL    , PARAMETER :: P2SI         = 1.0
 
    !  Orbital constants:
+   !  Note - these parameters are not used when coupled to RASM (Andrew Roberts)
 
    INTEGER , PARAMETER :: PLANET_YEAR = 365   ! number of days in a calendar year
    REAL , PARAMETER :: OBLIQUITY = 23.5       ! solar obliquity (degree)

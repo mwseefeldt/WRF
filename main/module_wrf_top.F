@@ -179,10 +179,11 @@ CONTAINS
    CALL init_modules(1)
    IF ( .NOT. PRESENT( no_init1 ) ) THEN
      ! Initialize utilities (time manager, etc.)
+! RASM: modified defaultCalKind options to use WRFU_CALKIND_* instead of WRFU_CAL_*
 #ifdef NO_LEAP_CALENDAR
-     CALL WRFU_Initialize( defaultCalKind=WRFU_CAL_NOLEAP )
+     CALL WRFU_Initialize( defaultCalKind=WRFU_CALKIND_NOLEAP )
 #else
-     CALL WRFU_Initialize( defaultCalKind=WRFU_CAL_GREGORIAN )
+     CALL WRFU_Initialize( defaultCalKind=WRFU_CALKIND_GREGORIAN )
 #endif
    ENDIF
    ! Phase 2 resumes after MPI_INIT() (if it is called)
@@ -355,6 +356,11 @@ CONTAINS
 ! broadcast of the configuration information.
 ! 
 !</DESCRIPTION>
+
+   !--------------------------------------------------------------
+   ! RASM: 
+   CALL wrf_get_dm_communicator ( loccomm )
+   !--------------------------------------------------------------
    CALL       wrf_message ( program_name )
    CALL       wrf_message ( commit_version )
    CALL       wrf_debug ( 100 , 'wrf: calling alloc_and_configure_domain ' )

@@ -31,6 +31,7 @@ MODULE module_domain
    USE module_wrf_error
    USE module_utility
    USE module_domain_type
+   USE ESMF  ! RASM: include ESMF module
 
    ! In WRFV3, the module_domain_type is defined
    ! in a separaate source file, frame/module_domain_type.F
@@ -2301,19 +2302,22 @@ CONTAINS
         CALL domain_clock_get( grid, start_time=startTime )
         IF ( interval_only ) THEN
            grid%io_intervals( alarm_id ) = interval
+           ! RASM (Juanxiong He): add name='interval_only'
            grid%alarms( alarm_id ) = &
-             WRFU_AlarmCreate( clock=grid%domain_clock, &
+             WRFU_AlarmCreate( name='interval_only', clock=grid%domain_clock, &
                                RingInterval=interval,   &
                                rc=rc )
         ELSE IF ( no_args ) THEN
+           ! RASM (Juanxiong He): add name='no_args'
            grid%alarms( alarm_id ) = &
-             WRFU_AlarmCreate( clock=grid%domain_clock, &
+             WRFU_AlarmCreate( name='no_args', clock=grid%domain_clock, &
                                RingTime=startTime,      &
                                rc=rc )
         ELSE IF ( all_args ) THEN
            grid%io_intervals( alarm_id ) = interval
+           ! RASM (Juanxiong He): add name='all_args'
            grid%alarms( alarm_id ) = &
-             WRFU_AlarmCreate( clock=grid%domain_clock,         &
+             WRFU_AlarmCreate( name='all_args', clock=grid%domain_clock,         &
                                RingTime=startTime + begin_time, &
                                RingInterval=interval,           &
                                StopTime=startTime + end_time,   &
@@ -2329,6 +2333,13 @@ CONTAINS
             'domain_alarm_create:  WRFU_AlarmRingerOff() failed' )
         ENDIF
         grid%alarms_created( alarm_id ) = .TRUE.
+        ! RASM (Juanxiong He): reset the PrevRingTime for all alarm signal except restart_alarm
+        if(all_args) then
+          rc=grid%domain_clock%clockint%NumAlarms
+          grid%domain_clock%clockint%AlarmList(rc)%alarmint%PrevRingTime=&
+          grid%domain_clock%clockint%AlarmList(rc)%alarmint%RingTime
+        endif
+        !-------------------------------------------------------------
       END SUBROUTINE domain_alarm_create
 
 
