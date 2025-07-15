@@ -1220,7 +1220,8 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    NEXT section for shallow convection
 !
-      if(ishallow_g3.eq.1)then
+!     Note: RASM mod to change from .eq. to .ge. to specify land/water
+      if(ishallow_g3.ge.1)then
 !     write(0,*)'now do shallow for j = ',j
       call cup_env(z3,qes3,he3,hes3,tshall,qshall,po,z1, &
            psur,ierr5,tcrit,0,xl,cp,   &
@@ -1378,6 +1379,38 @@ CONTAINS
 ! now for shallow forcing
 !
        do i=its,itf
+!------------------------------------------------------------------------------
+! RASM (Mark Seefeldt):  March 2017
+! Apply the shallow cumulus to only-land or only-water points. This is done by
+! setting the shallow cumulus values to 0, effectively turning off shcu for
+! those points. This does not save computation time as shcu is still calclated
+! above for all points.
+!
+! Apply shcu only to land(=1) points (set water(=2) points to 0):
+         if(ishallow_g3.eq.2 .and. xland(i).ge.1.5)then
+           k23(i)=0
+           kbcon3(i)=0
+           ktop3(i)=0
+           xmb3(i)=0
+           do k=kts,ktf
+              outts(i,k)=0.
+              outqs(i,k)=0.
+           enddo
+           cycle
+         endif
+! Apply shcu only to water points (set land point to 0):
+         if(ishallow_g3.eq.3 .and. xland(i).lt.1.5)then
+           k23(i)=0
+           kbcon3(i)=0
+           ktop3(i)=0
+           xmb3(i)=0
+           do k=kts,ktf
+              outts(i,k)=0.
+              outqs(i,k)=0.
+           enddo
+           cycle
+         endif
+!------------------------------------------------------------------------------
         xmb3(i)=0.
         xff_shal(1:9)=0.
         if(ierr5(i).eq.0)then
