@@ -3086,7 +3086,8 @@ contains
                         cldfmc, taucmc, planklay, planklev, plankbnd, &
                         pwvcm, fracs, taut, &
                         totuflux, totdflux, fnet, htr, &
-                        totuclfl, totdclfl, fnetc, htrc ) 
+                        totuclfl, totdclfl, fnetc, htrc, lwups_sc ) 
+! RASM: add lwups_sc into rtrnmc subroutine for mapping
 !-----------------------------------------------------------------------------
 !
 !  Original version:   E. J. Mlawer, et al. RRTM_V3.0
@@ -3187,6 +3188,9 @@ contains
       integer(kind=im) :: igc                               ! g-point interval counter
       integer(kind=im) :: iclddn                            ! flag for cloud in down path
       integer(kind=im) :: ittot, itgas, itr                 ! lookup table indices
+
+! RASM: add lwups_sc into rtrnmc subroutine for mapping
+      real, dimension ( 1 ) :: lwups_sc 
 
 ! ------- Definitions -------
 ! input
@@ -3493,10 +3497,11 @@ contains
       enddo
 
 ! Calculate fluxes at surface
-      totuflux(0) = totuflux(0) * fluxfac
+! RASM: do the mapping of lwups from coupler to into WRF
+      totuflux(0) = lwups_sc(1)
       totdflux(0) = totdflux(0) * fluxfac
       fnet(0) = totuflux(0) - totdflux(0)
-      totuclfl(0) = totuclfl(0) * fluxfac
+      totuclfl(0) = lwups_sc(1)
       totdclfl(0) = totdclfl(0) * fluxfac
       fnetc(0) = totuclfl(0) - totdclfl(0)
 
@@ -10699,8 +10704,10 @@ contains
              inflglw ,iceflglw,liqflglw,cldfmcl , &
              taucmcl ,ciwpmcl ,clwpmcl , cswpmcl ,reicmcl ,relqmcl , resnmcl , &
              tauaer  , &
-             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
+             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, , lwups_sc &
              uflxcln ,dflxcln, calc_clean_atm_diag )
+! RASM: bring in lwups (LW_u_sfc) in a single column to map into RRTMG totuclfl variable.
+
 
 ! -------- Description --------
 
@@ -11019,6 +11026,8 @@ contains
       real(kind=rb) :: fnetcln(0:nlay+1)      ! clean sky net longwave flux (w/m2)
       real(kind=rb) :: htrcln(0:nlay+1)       ! clean sky longwave heating rate (k/day)
 
+      ! RASM: bring in lwups (LW_u_sfc) in a single column to map into RRTMG totuclfl variable.
+      real, dimension ( 1 ) :: lwups_sc       ! upward longwave flux from surface (coupler) (w/m2)
 !
 ! Initializations
 
@@ -11160,7 +11169,8 @@ contains
                      cldfmc, taucmc, planklay, planklev, plankbnd, &
                      pwvcm, fracs, taut, &
                      totuflux, totdflux, fnet, htr, &
-                     totuclfl, totdclfl, fnetc, htrc )
+                     totuclfl, totdclfl, fnetc, htrc, lwups_sc )
+! RASM: include lwups_sc (LW_u_sfc) in a single column to map into RRTMG totuclfl variable
 
 !  Transfer up and down fluxes and heating rate to output arrays.
 !  Vertical indexing goes from bottom to top; reverse here for GCM if necessary.
@@ -11604,6 +11614,7 @@ CONTAINS
                        ims,ime, jms,jme, kms,kme,                 &
                        its,ite, jts,jte, kts,kte,                 &
                        lwupflx, lwupflxc, lwdnflx, lwdnflxc       &
+                       ,lwups                                     & ! RASM: LW sfc from coupler
                                                                   )
 !------------------------------------------------------------------
 !ccc To use clWRF time varying trace gases
@@ -11714,7 +11725,8 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ),                           &
          OPTIONAL, INTENT(INOUT) ::                               &
                       LWUPT,LWUPTC,LWUPTCLN,LWDNT,LWDNTC,LWDNTCLN,&
-                      LWUPB,LWUPBC,LWUPBCLN,LWDNB,LWDNBC,LWDNBCLN 
+                      LWUPB,LWUPBC,LWUPBCLN,LWDNB,LWDNBC,LWDNBCLN,LWUPS 
+   ! RASM: include LWUPS for LW up from surface (coupler)
 
 ! Layer longwave fluxes (including extra layer above model top)
 ! Vertical ordering is from bottom to top (W m-2)
@@ -11820,7 +11832,9 @@ CONTAINS
                                                              hrc
 
     real, dimension ( 1 ) ::                                tsfc, &
-                                                              ps
+                                                              ps, &
+                                                        lwups_sc
+    ! RASM: add in single dim variable to pass lwups into radiation subroutine
     real ::                                                   ro, &
                                                               dz
     real:: snow_mass_factor
@@ -12765,6 +12779,9 @@ CONTAINS
       endif  ! aer_ra_feedback
 #endif
 
+         ! RASM: convert input lwups into a single column for input into rrtmg_lw
+         lwups_sc(ncol) = LWUPS(i,j)
+
 ! Call RRTMG longwave radiation model
          call rrtmg_lw &
             (ncol    ,nlay    ,icld    , &
@@ -12774,8 +12791,9 @@ CONTAINS
              inflglw ,iceflglw,liqflglw,cldfmcl , &
              taucmcl ,ciwpmcl ,clwpmcl ,cswpmcl, reicmcl ,relqmcl ,resnmcl , &
              tauaer  , &
-             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
+             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, lwups_sc, &
              uflxcln ,dflxcln, calc_clean_atm_diag )
+          ! RASM: include lwups_sc for passing LW up from surface (coupler)
 
 ! Output downard surface flux, and outgoing longwave flux and cloud forcing 
 ! at the top of atmosphere (W/m2)
@@ -13044,9 +13062,10 @@ IMPLICIT NONE
       ENDIF
 
       IF ( wrf_dm_on_monitor() ) THEN
-        OPEN(rrtmg_unit,FILE='RRTMG_LW_DATA',                  &
+        OPEN(rrtmg_unit,FILE='RRTMG_LW_DATA_DBL',                  &
              FORM='UNFORMATTED',STATUS='OLD',ERR=9009)
       ENDIF
+      ! RASM: open RRTMG longwave data but need double precision for RASM
 
       call lw_kgb01(rrtmg_unit)
       call lw_kgb02(rrtmg_unit)

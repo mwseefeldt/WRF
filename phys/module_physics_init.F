@@ -3235,6 +3235,8 @@ CHARACTER(LEN=8) :: name
    END SELECT sfclay_select
 
 
+! RASM: Remove LSMs from being run as this is handled by the coupled land model
+#ifndef RASMCOUPLED
 !-- initialize surface scheme
 
    sfc_select: SELECT CASE(config_flags%sf_surface_physics)
@@ -3661,6 +3663,8 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
       CASE DEFAULT
 
    END SELECT sfc_select
+! RASMCOUPLED
+#endif
 
 #if ( EM_CORE == 1 )
    IF(PRESENT(SF_OCEAN_PHYSICS))THEN

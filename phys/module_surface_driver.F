@@ -2094,6 +2094,8 @@ CONTAINS
                                                       .TRUE. ) THEN
          CALL wrf_debug( 100, 'in SFCLAY' )
 
+! RASM: Remove fractional sea ice wrapper for Revised MM5 surface layer scheme
+#ifndef RASMCOUPLED
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
             CALL SFCLAYREV_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr,&
                  p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
@@ -2114,6 +2116,7 @@ CONTAINS
                  shalwater_z0,water_depth,                           & 
                  scm_force_flux,sf_surface_physics,errmsg,errflg     )
          ELSE
+#endif
          CALL SFCLAYREV(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
                znt,ust,pblh,mavail,zol,mol,regime,psim,psih,fm,fhh, &
@@ -2136,7 +2139,9 @@ CONTAINS
            end do
            end do
 #endif
+#ifndef RASMCOUPLED
          ENDIF
+#endif
        ELSE
          CALL wrf_error_fatal('Lacking arguments for SFCLAY in surface driver')
        ENDIF
@@ -2364,6 +2369,8 @@ CONTAINS
 
           CALL wrf_debug(100,'in MYNNSFC')
 
+! RASM: Remove fractional sea ice wrapper for MYNN surface layer scheme
+#ifndef RASMCOUPLED
          IF (FRACTIONAL_SEAICE == 1) THEN
           CALL MYNN_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,th_phy,rho,                              &
@@ -2384,6 +2391,7 @@ CONTAINS
                i_start(ij),i_end(ij),j_start(ij),j_end(ij),kts,kte,&   
                ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                 )
          ELSE
+#endif
           CALL SFCLAY_mynn(u_phytmp,v_phytmp,t_phy,qv_curr,        &
                p_phy,dz8w,th_phy,rho,                              &
                cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm,            &
@@ -2398,7 +2406,9 @@ CONTAINS
                ims,ime, jms,jme, kms,kme,                          &
                i_start(ij),i_end(ij),j_start(ij),j_end(ij),kts,kte,&
                ustm,ck,cka,cd,cda,isftcflx,iz0tlnd                 )
+#ifndef RASMCOUPLED
          ENDIF
+#endif
        ELSE
           CALL wrf_error_fatal('Lacking arguments for SFCLAY_mynn in surface driver')
        ENDIF
@@ -2534,6 +2544,8 @@ CONTAINS
      ENDDO
      !$OMP END PARALLEL DO
 
+! RASM: Remove LSMs from being run as this is handled by the coupled land model
+#ifndef RASMCOUPLED
      IF (ISFFLX.EQ.0 ) GOTO 430
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij, i, j, k ) firstprivate(frpcpn)
@@ -4390,6 +4402,8 @@ CONTAINS
      ENDDO
      !$OMP END PARALLEL DO
    ENDIF
+#endif
+! RASMCOUPLED
 #endif
 ! adding a lake model -- 07/02/2010
    IF ( LakeModel == 1 ) THEN

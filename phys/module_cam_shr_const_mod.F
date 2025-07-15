@@ -9,7 +9,7 @@
 
 MODULE shr_const_mod
 
-   use shr_kind_mod
+   use shr_kind_mod_wrf
 
    integer(SHR_KIND_IN),parameter,private :: R8 = SHR_KIND_R8 ! rename for local readability only
 
@@ -62,4 +62,4 @@ MODULE shr_const_mod
 
    real(R8),parameter :: SHR_CONST_SPVAL   = 1.0e30_R8       ! special missing value
 
-END MODULE shr_const_mod
+END MODULE shr_const_mod_wrf
