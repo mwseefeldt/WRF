@@ -11,13 +11,13 @@ END MODULE module_diag_pld
 MODULE module_diag_pld
 CONTAINS
 
-   SUBROUTINE pld ( u,v,w,t,qv,zp,zb,pp,pb,p,pw,                    &
+   SUBROUTINE pld ( u,v,w,t,qv,zp,zb,pp,pb,p,pw,psfc,               &
                     msfux,msfuy,msfvx,msfvy,msftx,msfty,            &
-                    f,e,                                            &
+                    f,e,ht,                                         &
                     use_tot_or_hyd_p,extrap_below_grnd,missing,     &  
                     num_press_levels,max_press_levels,press_levels, &
                     p_pl,u_pl,v_pl,t_pl,rh_pl,ght_pl,s_pl,td_pl,    &
-                    q_pl,                                           &
+                    q_pl,slp_pl,                                    &
                     ids,ide, jds,jde, kds,kde,                      &
                     ims,ime, jms,jme, kms,kme,                      &
                     its,ite, jts,jte, kts,kte                       )
@@ -40,11 +40,13 @@ CONTAINS
       REAL   , INTENT(IN   ) , DIMENSION(ims:ime , kms:kme , jms:jme) :: u,v,w,t,qv,zp,zb,pp,pb,p,pw
       INTEGER, INTENT(IN   )                                          :: num_press_levels, max_press_levels
       REAL   , INTENT(IN   ) , DIMENSION(max_press_levels)            :: press_levels
+      REAL   , INTENT(IN   ) , DIMENSION(ims:ime , jms:jme)           :: ht, psfc
    
       !  Output variables
    
       REAL   , INTENT(  OUT) ,  DIMENSION(num_press_levels)                     :: p_pl
       REAL   , INTENT(  OUT) ,  DIMENSION(ims:ime , num_press_levels , jms:jme) :: u_pl,v_pl,t_pl,rh_pl,ght_pl,s_pl,td_pl,q_pl
+      REAL   , INTENT(  OUT) ,  DIMENSION(ims:ime , jms:jme)                    :: slp_pl
    
       !  Local variables
    
@@ -83,6 +85,7 @@ CONTAINS
                s_pl  (i,kp,j) = missing
                td_pl (i,kp,j) = missing
                q_pl  (i,kp,j) = missing
+               slp_pl   (i,j) = missing
             END DO
          END DO
       END DO
@@ -91,6 +94,9 @@ CONTAINS
    
       j_loop : DO j = jts , MIN(jte,jde-1)
          i_loop : DO i = its , MIN(ite,ide-1)
+   
+            !  claculate sea-level presure for each j, i
+            CALL SLP_compute(t(i,1,j), pp(i,1,j), pb(i,1,j), qv(i,1,j), ht(i,j), psfc(i,j), slp_pl(i,j))
    
             !  For each i,j location, loop over the selected
             !  pressure levels to find
@@ -290,6 +296,71 @@ CONTAINS
       END DO j_loop
 
    END SUBROUTINE pld
+
+  SUBROUTINE SLP_compute(t, p, pb, qv, ht, psfc, slp)
+    ! Subroutine calculates SLP resulting 
+
+    USE module_model_constants, only: t0,p0
+    USE shr_const_mod, only: SHR_CONST_RDAIR,SHR_CONST_G,SHR_CONST_CPDAIR
+
+    IMPLICIT NONE
+
+    REAL, INTENT(IN):: t, p, pb, qv
+    REAL, INTENT(IN):: ht, psfc
+    REAL, INTENT(INOUT) :: slp
+
+    ! local
+    REAL     :: t_tmp, tmp_pmsl, z, tv, g, cp, rd, xlapse
+    REAL     :: alpha, tstar, tt0, alph, beta, psfc_tmp, p_tmp
+    INTEGER              :: k
+    CHARACTER (LEN=1024) :: message
+
+    xlapse = 6.5D-3
+    rd=SHR_CONST_RDAIR
+    g=SHR_CONST_G
+    cp=SHR_CONST_CPDAIR
+
+    ! calulate surface tempature at lowest level
+    t_tmp = (t + t0) * (((p + pb)/p0) ** (rd/cp))
+
+    ! calculate virtual temperature at lowest model level
+    tv = t_tmp * (1 + qv * 0.61)
+
+    ! Calculate geopotential at surface in m2 s-2
+    z = ht * g ! terrain height in m
+
+    alpha = rd * xlapse/g ! 0.1903, no units
+
+    ! Get surface pressure in Pa
+    psfc_tmp = psfc
+
+    ! Calculate pressure in WRF at lowest model level in Pa
+    p_tmp = (p + pb)
+
+    ! Use surface pressure for PMSL if we are at sea level.
+    if ( abs(z/g) < 1.0E-4 )then
+       slp = psfc_tmp
+       ! Othewise, calculate based on ECMWF method
+    else
+       tstar = tv * (1.0 + alpha * (psfc_tmp/p_tmp-1.0)) 
+       tt0 = tstar + xlapse*z/g
+
+       if ( tstar <= 290.5 .and. tt0 > 290.5 ) then     
+          alph = rd/z * (290.5 - tstar)  
+       else if (tstar > 290.5  .and. tt0 > 290.5) then  
+          alph = 0.0
+          tstar = 0.5 * (290.5 + tstar)  
+       else  
+          alph=alpha  
+          if (tstar < 255.0) then  
+             tstar = 0.5 * (255.0 + tstar)             
+          endif
+       endif
+       beta = z/(rd*tstar)
+       slp = psfc_tmp * exp( beta*(1.0 - alph * beta/2.0 + ((alph*beta)**2)/3.0))
+    end if
+
+  END SUBROUTINE SLP_compute
 
 END MODULE module_diag_pld
 #endif
