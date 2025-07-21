@@ -2018,6 +2018,7 @@ DEALLOCATE(dz8w)
                  ,pb=grid%pb                    &
                  ,p=grid%p_hyd                  &
                  ,pw=grid%p_hyd_w               &
+                 ,psfc=grid%psfc                &
                  !  Map factors, coriolis for diags
                  ,msfux=grid%msfux              &
                  ,msfuy=grid%msfuy              &
@@ -2027,6 +2028,7 @@ DEALLOCATE(dz8w)
                  ,msfty=grid%msfty              &
                  ,f=grid%f                      &
                  ,e=grid%e                      &
+                 ,ht=grid%ht                    &
                  !  Namelist info
                  ,use_tot_or_hyd_p=config_flags%use_tot_or_hyd_p &
                  ,extrap_below_grnd=config_flags%extrap_below_grnd &
@@ -2044,6 +2046,7 @@ DEALLOCATE(dz8w)
                  ,s_pl  = grid%s_pl             &  
                  ,td_pl = grid%td_pl            &
                  ,q_pl = grid%q_pl              &
+                 ,slp_pl= grid%slp_pl           &
                  !  Dimension arguments
                  ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde    &
                  ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme    &
