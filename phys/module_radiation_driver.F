@@ -3533,7 +3533,7 @@ CONTAINS
    SOLCON=0.
 
 ! RASM (Roberts June 2013): used to sync WRF and CPL sun position
-#ifdef CESMCOUPLED
+#ifdef RASMCOUPLED
   RADTIM_SHR=real(JULIAN+1.0_SHR_KIND_R8+config_flags%radt/2880.0_SHR_KIND_R8,SHR_KIND_R8)
 
   write(6,*)'**************** RADIATION TIME CHECK *****************'
