@@ -8745,6 +8745,49 @@
                pbbcddir(ikl) = pbbcddir(ikl) + zincflx(iw)*ztdbtc_nodel(jk)
             enddo
 
+
+!--------------------------------------------------------------------------------
+! RASM (DuVivier - September 2013):
+! Splitting band 9 (625-778nm) at 700nm for CICE
+! The implementation in CESM (commented out) divides the band in half thought it
+! is recognized it isn't physically realistic.
+! The RASM version is a slight modification with a 70/30 split.
+!--------------------------------------------------------------------------------
+#ifdef RASMCOUPLED
+! Accumulate direct fluxes for UV/visible bands
+               if (ibm >= 10 .and. ibm <= 13) then
+                  puvcd(ikl) = puvcd(ikl) + zincflx(iw)*zcd(jk,iw)
+                  puvfd(ikl) = puvfd(ikl) + zincflx(iw)*zfd(jk,iw)
+                  puvfddir(ikl) = puvfddir(ikl) + zincflx(iw)*ztdbt_nodel(jk)
+                  puvcddir(ikl) = puvcddir(ikl) + zincflx(iw)*ztdbtc_nodel(jk)
+! split band 9 into NearIR and Visible
+               else if (ibm == 9) then  
+! RASM method: split the 9th band weighted toward visible (70VIS/30NIR)
+                  puvcd(ikl) = puvcd(ikl) + 0.7*zincflx(iw)*zcd(jk,iw)
+                  puvfd(ikl) = puvfd(ikl) + 0.7*zincflx(iw)*zfd(jk,iw)
+                  pnicd(ikl) = pnicd(ikl) + 0.3*zincflx(iw)*zcd(jk,iw)
+                  pnifd(ikl) = pnifd(ikl) + 0.3*zincflx(iw)*zfd(jk,iw)
+                  puvfddir(ikl) = puvfddir(ikl) + 0.7*zincflx(iw)*ztdbt_nodel(jk)
+                  puvcddir(ikl) = puvcddir(ikl) + 0.7*zincflx(iw)*ztdbtc_nodel(jk)
+                  pnifddir(ikl) = pnifddir(ikl) + 0.3*zincflx(iw)*ztdbt_nodel(jk)
+                  pnicddir(ikl) = pnicddir(ikl) + 0.3*zincflx(iw)*ztdbtc_nodel(jk)
+! CESM method: split the 9th band evenly (50VIS/50NIR)
+!                  puvcd(ikl) = puvcd(ikl) + 0.5*zincflx(iw)*zcd(jk,iw)
+!                  puvfd(ikl) = puvfd(ikl) + 0.5*zincflx(iw)*zfd(jk,iw)
+!                  pnicd(ikl) = pnicd(ikl) + 0.5*zincflx(iw)*zcd(jk,iw)
+!                  pnifd(ikl) = pnifd(ikl) + 0.5*zincflx(iw)*zfd(jk,iw)
+!                  puvfddir(ikl) = puvfddir(ikl) + 0.5*zincflx(iw)*ztdbt_nodel(jk)
+!                  puvcddir(ikl) = puvcddir(ikl) + 0.5*zincflx(iw)*ztdbtc_nodel(jk)
+!                  pnifddir(ikl) = pnifddir(ikl) + 0.5*zincflx(iw)*ztdbt_nodel(jk)
+!                  pnicddir(ikl) = pnicddir(ikl) + 0.5*zincflx(iw)*ztdbtc_nodel(jk)
+! Accumulate direct fluxes for near-IR bands
+               else if (ibm == 14 .or. ibm <= 8) then  
+                  pnicd(ikl) = pnicd(ikl) + zincflx(iw)*zcd(jk,iw)
+                  pnifd(ikl) = pnifd(ikl) + zincflx(iw)*zfd(jk,iw)
+                  pnifddir(ikl) = pnifddir(ikl) + zincflx(iw)*ztdbt_nodel(jk)
+                  pnicddir(ikl) = pnicddir(ikl) + zincflx(iw)*ztdbtc_nodel(jk)
+               endif
+#else
 ! Accumulate direct fluxes for UV/visible bands
                if (ibm >= 10 .and. ibm <= 13) then
             do jk=1,klev+1
@@ -8764,6 +8807,8 @@
                   pnifddir(ikl) = pnifddir(ikl) + zincflx(iw)*ztdbt_nodel(jk)
             enddo
                endif
+#endif
+! RASM: modification to splitting of band 9
 
 ! End loop on jg, g-point interval
          enddo             
@@ -10018,6 +10063,11 @@ USE module_state_description, ONLY : FER_MP_HIRES, FER_MP_HIRES_ADVECT
 #endif
 !USE module_dm
 
+! RASM (DuVivier - Oct 2013): code of syncing WRF and CPL sun position
+USE module_ra_rasm
+! RASM (Solomon - Feb 2015):
+use parkind ,only : im => kind_im, rb => kind_rb
+
 use parrrsw, only : nbndsw, ngptsw, naerec
 use rrtmg_sw_init, only: rrtmg_sw_ini
 use rrtmg_sw_rad, only: rrtmg_sw
@@ -10487,6 +10537,9 @@ CONTAINS
 
     real, dimension (1) :: landfrac, landm, snowh, icefrac
 
+! RASM (DuVivier - Oct 2013): include XXLAT and XXLONG for coszr with NIR and VIS solar albedo
+    REAL :: XXLAT, XXLONG
+
     integer :: pcols, pver
 
     INTEGER :: i,j,K, na
@@ -10582,9 +10635,20 @@ CONTAINS
 
 ! Cosine solar zenith angle for current time step
 !
+! RASM (DuVivier - Oct 2013): coszr for calc NIR/VIS direct/diffuse solar albedo at sfc
+#ifdef RASMCOUPLED
+         XXLAT=XLAT(i,j)*DEGRAD
+         XXLONG=XLONG(i,j)*DEGRAD
+         DECLIN_SHR=real(DECLIN,SHR_KIND_R8)
+         XXLAT_SHR=real(XXLAT,SHR_KIND_R8)
+         XXLONG_SHR=real(XXLONG,SHR_KIND_R8)
+         coszrs=real(shr_orb_cosz(RADTIM_SHR,XXLAT_SHR,XXLONG_SHR,DECLIN_SHR))
+         coszr(i,j) = coszrs
+#else
           ! jararias, 14/08/2013
           coszr(i,j)=xcoszen(i,j)
           coszrs=xcoszen(i,j)
+#endif
 
 ! Set flag to prevent shortwave calculation when sun below horizon
          if (coszrs.le.0.0) dorrsw = .false.
@@ -10950,6 +11014,13 @@ CONTAINS
          enddo
         endif
 
+!RASM: the partitioning of the sfc albedo is from the coupler/component models
+#ifdef RASMCOUPLED
+         asdir(ncol) = ALSWVISDIR(I,J)*1.0_rb
+         asdif(ncol) = ALSWVISDIF(I,J)*1.0_rb
+         aldir(ncol) = ALSWNIRDIR(I,J)*1.0_rb
+         aldif(ncol) = ALSWNIRDIF(I,J)*1.0_rb
+#else
 ! Set surface albedo for direct and diffuse radiation in UV/visible and
 ! near-IR spectral regions
 ! -------------- Zhenxin 2011-06-20 ----------- !
@@ -10976,6 +11047,8 @@ CONTAINS
 
 ! ---------- End of Addiation ------!
 ! ----------  End of fds_Zhenxin 2011-06-20   --------------!
+#endif
+! RASM: partitioning of sfc albedo from coupler
 
 ! Define cloud optical properties for radiation (inflgsw = 0)
 ! This option is not currently active
@@ -11665,7 +11738,7 @@ IMPLICIT NONE
       ENDIF
 
       IF ( wrf_dm_on_monitor() ) THEN
-        OPEN(rrtmg_unit,FILE='RRTMG_SW_DATA',                  &
+        OPEN(rrtmg_unit,FILE='RRTMG_SW_DATA_DBL',              &
              FORM='UNFORMATTED',STATUS='OLD',ERR=9009)
       ENDIF
 

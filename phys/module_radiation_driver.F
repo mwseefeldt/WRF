@@ -138,6 +138,7 @@ CONTAINS
               ,LWCF                                                       &
               ,SWCF                                                       &
               ,OLR                                                        &
+              ,LWUPS                                                      & ! RASM: LW up sfc from coupler
               ,aerodm, PINA, aodtot                                       &
               ,OZMIXM, PIN                                                &
               ,M_PS_1, M_PS_2, AEROSOLC_1                                 &
@@ -312,6 +313,9 @@ CONTAINS
    USE module_ra_aerosol    , ONLY : calc_aerosol_goddard_sw, &
                                      calc_aerosol_rrtmg_sw
    USE module_ra_farms      , ONLY : farms_driver
+
+   ! RASM (Roberts - June 2013): code of syncing WRF and CPL sun position
+   USE module_ra_rasm
 
 ! amontornes-bcodina 2015/09 solar eclipses
    USE module_ra_eclipse    , ONLY : solar_eclipse
@@ -679,6 +683,7 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ),          OPTIONAL ,       &
          INTENT(INOUT)  ::                                  SWCF, &
                                                             LWCF, &
+                                                           LWUPS, & ! RASM: LW up sfc from coupler
                                                              OLR
 ! ---- fds (06/2010) ssib alb components ------------
    REAL, DIMENSION( ims:ime, jms:jme ),          OPTIONAL ,       &
@@ -957,7 +962,8 @@ CONTAINS
    REAL, DIMENSION( ims:ime, levsiz, jms:jme )  ::    ozmixt
    REAL, DIMENSION( ims:ime, alevsiz, jms:jme, 1:no_src_types )  ::    aerodt
 
-   REAL    ::    DECLIN,SOLCON,XXLAT,TLOCTM,XT24, CEN_LAT, cldfra_cup_mod
+   ! RASM (Roberts - June 2013): include XXLONG to sync WRF and CPL positions
+   REAL    ::    DECLIN,SOLCON,XXLAT,XXLONG,TLOCTM,XT24, CEN_LAT, cldfra_cup_mod
    INTEGER ::    i,j,k,its,ite,jts,jte,ij
    INTEGER ::    STEPABS
    LOGICAL ::    gfdl_lw,gfdl_sw, compute_cldfra_cup
@@ -1201,11 +1207,31 @@ CONTAINS
            declinx=declin
            solconx=solcon
          ENDIF
+! RASM (Roberts - June 2013): code of syncing WRF and CPL sun position
+#ifdef RASMCOUPLED
+     IF(PRESENT(coszen).AND.PRESENT(hrang))THEN
+       DO j=jts,jte
+       DO i=its,ite
+
+        XXLAT=XLAT(I,J)*DEGRAD
+        XXLONG=XLONG(I,J)*DEGRAD
+        HRANG(I,J)=ACOS(COS(RADTIM_SHR*pi2 + XXLONG + pi2/2.0))
+
+        DECLIN_SHR=real(DECLIN,SHR_KIND_R8)
+        XXLAT_SHR=real(XXLAT,SHR_KIND_R8)
+        XXLONG_SHR=real(XXLONG,SHR_KIND_R8)
+        COSZEN(I,J)=real(shr_orb_cosz(RADTIM_SHR,XXLAT_SHR,XXLONG_SHR,DECLIN_SHR))
+
+       ENDDO
+       ENDDO
+     ENDIF
+#else
 ! added coszen subroutine : jararias, 2013/08/10
 !   outputs: coszen, hrang
          call calc_coszen(ims,ime,jms,jme,its,ite,jts,jte,  &
                           julian,xtime+radt*0.5,gmt, &
                           declin,degrad,xlong,xlat,coszen,hrang)
+#endif
 
        ! backup the incoming hydrometeors
 
@@ -1720,7 +1746,10 @@ CONTAINS
      DO i=its,ite
         GSW(I,J)=0.
         GLW(I,J)=0.
+! RASM (DuVivier - Jan 2013): SWDOWN is a diagnostic variable and now calculated in atm_comp_mct.F
+#ifndef RASMCOUPLED
         SWDOWN(I,J)=0.
+#endif
         swddir(i,j)=0.  ! jararias, 2013/08/10
         swddni(i,j)=0.  ! jararias, 2013/08/10
         swddif(i,j)=0.  ! jararias, 2013/08/10
@@ -2097,6 +2126,7 @@ CONTAINS
                   ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte,&
                   LWUPFLX=LWUPFLX,LWUPFLXC=LWUPFLXC,                &
                   LWDNFLX=LWDNFLX,LWDNFLXC=LWDNFLXC,                &
+                  LWUPS=LWUPS,                                      & ! RASM: add LW up sfc from coupler
                   mp_physics=mp_physics                             )
 
 
@@ -2872,11 +2902,16 @@ CONTAINS
         ENDDO
         ENDDO
 
+! RASM (DuVivier 2013): Remove this calculation because ALBEDO is no longer a 
+!   variable that reflects the actual albedos being used, so it will cause an 
+!   incorrect calculation of SWDOWN. Both values are calculated in atm_comp_mct.F.
+#ifndef RASMCOUPLED
         DO j=jts,jte
         DO i=its,ite
            SWDOWN(I,J)=GSW(I,J)/(1.-ALBEDO(I,J))
         ENDDO
         ENDDO
+#endif
      ENDIF
 
 ! jararias, 14/08/2013
@@ -3470,14 +3505,23 @@ CONTAINS
                        DEGRAD,DPD                                    )
 !---------------------------------------------------------------------
    USE module_wrf_error
+! RASM (Roberts June 2013): used to sync WRF and CPL sun position
+   USE module_ra_rasm
+   USE module_wrf_top, ONLY : config_flags
+! RASM end
    IMPLICIT NONE
 !---------------------------------------------------------------------
 
 ! !ARGUMENTS:
    REAL, INTENT(IN   )      ::       DEGRAD,DPD,XTIME,JULIAN
    REAL, INTENT(OUT  )      ::       DECLIN,SOLCON
+! RASM (Roberts June 2013): used to sync WRF and CPL sun position
+#ifdef RASMCOUPLED
+   REAL   (SHR_KIND_R8)     ::       ECCFAC_SHR
+#else
    REAL                     ::       OBECL,SINOB,SXLONG,ARG,  &
                                      DECDEG,DJUL,RJUL,ECCFAC
+#endif
 !
 ! !DESCRIPTION:
 ! Compute terms used in radiation physics 
@@ -3488,6 +3532,28 @@ CONTAINS
    DECLIN=0.
    SOLCON=0.
 
+! RASM (Roberts June 2013): used to sync WRF and CPL sun position
+#ifdef CESMCOUPLED
+  RADTIM_SHR=real(JULIAN+1.0_SHR_KIND_R8+config_flags%radt/2880.0_SHR_KIND_R8,SHR_KIND_R8)
+
+  write(6,*)'**************** RADIATION TIME CHECK *****************'
+  write(6,*)''
+  write(6,*)'   NEXTSW_CDAY   : ',nextsw_cday
+  write(6,*)'   RADIATION TIME: ',RADTIM_SHR
+  write(6,*)'   JULIAN DAY    : ',JULIAN
+  write(6,*)''
+  write(6,*)'*******************************************************'
+
+  RADTIM_SHR=nextsw_cday
+
+  call shr_orb_decl (RADTIM_SHR,eccen,mvelpp,lambm0, &
+                     obliqr,DECLIN_SHR,ECCFAC_SHR)
+
+  DECLIN=real(DECLIN_SHR)
+
+  SOLCON=1370.*real(ECCFAC_SHR)
+
+#else
 !-----OBECL : OBLIQUITY = 23.5 DEGREE.
         
    OBECL=23.5*DEGRAD
@@ -3507,6 +3573,8 @@ CONTAINS
    ECCFAC=1.000110+0.034221*COS(RJUL)+0.001280*SIN(RJUL)+0.000719*  &
           COS(2*RJUL)+0.000077*SIN(2*RJUL)
    SOLCON=1370.*ECCFAC
+#endif
+! RASM
    
    END SUBROUTINE radconst
 
