@@ -5,7 +5,8 @@ MODULE module_integrate
 
 CONTAINS
 
-RECURSIVE SUBROUTINE integrate ( grid )
+! RASM (Juanxiong He): add flag to trigger radiation related processing 
+RECURSIVE SUBROUTINE integrate ( grid, rasm_rad_fl )
 
 
 
@@ -33,6 +34,9 @@ RECURSIVE SUBROUTINE integrate ( grid )
    !  Input data.
 
    TYPE(domain) , POINTER :: grid
+
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   LOGICAL, INTENT(INOUT), OPTIONAL              ::  rasm_rad_fl
 
 ! module_integrate:integrate
 ! <DESCRIPTION> 
@@ -172,13 +176,18 @@ RECURSIVE SUBROUTINE integrate ( grid )
    INTEGER                                :: rc
    LOGICAL                                :: should_add_forcing
 #endif
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   LOGICAL                                ::  lrasm_rad_fl
 
    ! interface
    INTERFACE
        ! mediation-supplied solver
-     SUBROUTINE solve_interface ( grid )
+       ! RASM (Juanxiong He): add flag to trigger radiation related processing 
+     SUBROUTINE solve_interface ( grid, rasm_rad_fl )
        USE module_domain
        TYPE (domain) grid
+       ! RASM (Juanxiong He): flag to trigger radiation related processing
+       LOGICAL, INTENT(INOUT), OPTIONAL              ::  rasm_rad_fl
      END SUBROUTINE solve_interface
        ! mediation-supplied routine to allow driver to pass time information
        ! down to mediation/model layer
@@ -312,12 +321,25 @@ RECURSIVE SUBROUTINE integrate ( grid )
 
    ! This allows us to reference the current grid from anywhere beneath 
    ! this point for debugging purposes.  
-   CALL set_current_grid_ptr( grid )
+
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   lrasm_rad_fl = .false.
+   IF (present(rasm_rad_fl)) THEN
+      lrasm_rad_fl = rasm_rad_fl
+   ENDIF
+
+   ! RASM (Juanxiong He): only set the current_grid_ptr if it is the first timestep
+   IF (grid%itimestep.eq.0) CALL set_current_grid_ptr( grid )
+
    CALL push_communicators_for_domain( grid%id )
 
    IF ( .NOT. domain_clockisstoptime( grid ) ) THEN
-      CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
+      ! RASM (Juanxiong He): only call if it is the first timestep
+      IF (grid%itimestep.eq.0) CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
+! RASM (Juanxiong He): remove IF THEN block re: config_flags%grid_allowed
+#ifndef RASMCOUPLED
       IF ( config_flags%grid_allowed ) THEN
+#endif
          CALL domain_clockprint ( 150, grid, 'DEBUG:  top of integrate(),' )
 #if ( WRFPLUS == 1 )
          IF ( (grid%jcdfi_use .OR. grid%jcdfi_diag .EQ. 1) .AND. config_flags%dyn_opt .EQ. dyn_em_tl ) THEN
@@ -325,13 +347,18 @@ RECURSIVE SUBROUTINE integrate ( grid )
             CALL jcdfi_tl (grid)
          ENDIF
 #endif
+! RASM (Juanxiong He): remove DO loop
+#ifndef RASMCOUPLED
          DO WHILE ( .NOT. domain_clockisstopsubtime(grid) )
+#endif
             IF ( wrf_dm_on_monitor() ) THEN
 IF ( grid%active_this_task ) THEN
                CALL start_timing
 END IF
             END IF
             CALL med_setup_step ( grid , config_flags )
+! RASM (Juanxiong He): remove section of code
+#ifndef RASMCOUPLED
             a_nest_was_opened = .false.
             ! for each nest whose time has come...
             DO WHILE ( nests_to_open( grid , nestid , kid ) )
@@ -359,6 +386,8 @@ ENDIF ! active_this_task
             IF ( a_nest_was_opened ) THEN
                CALL set_overlaps ( grid )   ! find overlapping and set pointers
             END IF
+#endif
+! RASM end
 
 IF ( grid%active_this_task ) THEN
             ! Accumulation calculation for DFI
@@ -384,6 +413,25 @@ ENDIF ! active_this_task
             ENDIF
 #endif
 
+! RASM (Juanxiong He): 
+#ifdef RASMCOUPLED
+               CALL set_current_grid_ptr( grid )
+               CALL wrf_debug( 100 , 'module_integrate: calling solve interface ' )
+               CALL solve_interface ( grid, lrasm_rad_fl )
+               IF (lrasm_rad_fl) THEN
+   	              IF ( wrf_dm_on_monitor() ) THEN
+                     CALL domain_clock_get ( grid, current_timestr=message2 )
+                     WRITE ( message , FMT = '("main: time ",A," on domain ",I3)' ) TRIM(message2), grid%id
+                     CALL end_timing ( TRIM(message) )
+                  END IF
+                  return
+               ENDIF 
+               CALL domain_clockadvance ( grid )
+               CALL wrf_debug( 100 , 'module_integrate: back from solve interface ' )
+               ! print lots of time-related information for testing
+               ! switch this on with namelist variable self_test_domain
+               CALL domain_time_test( grid, 'domain_clockadvance' )
+#else
             grid_ptr => grid
             DO WHILE ( ASSOCIATED( grid_ptr ) )
 IF ( grid_ptr%active_this_task ) THEN
@@ -400,12 +448,16 @@ ENDIF
                CALL domain_time_test( grid_ptr, 'domain_clockadvance' )
                grid_ptr => grid_ptr%sibling
             END DO
+#endif
+! RASM end
             CALL set_current_grid_ptr( grid )
             CALL med_calc_model_time ( grid , config_flags )
 IF ( grid%active_this_task ) THEN
               CALL med_after_solve_io ( grid , config_flags )
 ENDIF
 
+! RASM (Juanxiong He): remove section of code
+#ifndef RASMCOUPLED
             grid_ptr => grid
             DO WHILE ( ASSOCIATED( grid_ptr ) )
                DO kid = 1, max_nests
@@ -461,6 +513,8 @@ ENDIF
                grid_ptr => grid_ptr%sibling
             END DO
             CALL set_current_grid_ptr( grid )
+#endif
+! RASM end
             !  Report on the timing for a single time step.
             IF ( wrf_dm_on_monitor() ) THEN
 IF ( grid%active_this_task ) THEN
@@ -483,8 +537,15 @@ ENDIF ! active_this_task
             ENDIF
 #endif
             CALL med_endup_step ( grid , config_flags )
+! RASM (Juanxiong He): remove end of DO loop
+#ifndef RASMCOUPLED
          END DO
+#endif
 
+! RASM (Juanxiong He): add a IF THEN check re: domain_clockisstopsubtime
+#ifdef RASMCOUPLED
+       IF (domain_clockisstopsubtime(grid)) THEN
+#endif
 IF ( grid%active_this_task ) THEN
          ! Accumulation calculation for DFI
          CALL dfi_accumulate ( grid )
@@ -524,7 +585,16 @@ ENDIF ! active_this_task
                IF ( grid%active_this_task ) CALL med_last_solve_io ( grid , config_flags )
             ENDIF
          ENDIF
+! RASM (Juanxiong He): add a IF THEN check re: domain_clockisstopsubtime
+#ifdef RASMCOUPLED
+       ELSEIF (RESTART_NOW) THEN
+          CALL med_restart_out ( grid , config_flags )
+       ENDIF
+#endif
+! RASM (Juanxiong He): remove IF THEN block re: config_flags%grid_allowed
+#ifndef RASMCOUPLED
       ENDIF
+#endif
    END IF
    CALL pop_communicators_for_domain
    

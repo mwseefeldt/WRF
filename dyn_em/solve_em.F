@@ -1,8 +1,10 @@
 !WRF:MEDIATION_LAYER:SOLVER
 
-SUBROUTINE solve_em ( grid , config_flags  &
+SUBROUTINE solve_em ( grid , config_flags, rasm_rad_fl  & 
 ! Arguments generated from Registry
 #include "dummy_new_args.inc"
+!
+! RASM (Juanxiong He): add rasm_rad_fl logical to subroutine call (above)
 !
                     )
 ! Driver layer modules
@@ -95,6 +97,9 @@ SUBROUTINE solve_em ( grid , config_flags  &
 
    !  Structure that contains run-time configuration (namelist) data for domain
    TYPE (grid_config_rec_type) , INTENT(IN)          :: config_flags
+
+   ! RASM (Juanxiong He): add rasm_rad_fl as a logical flag for processing
+   LOGICAL, INTENT(INOUT)          :: rasm_rad_fl
 
    ! Local data
 
@@ -817,8 +822,8 @@ BENCH_START(calc_p_rho_tim)
                              , tke_tend                         &
                              , config_flags%use_adaptive_time_step &
                              , curr_secs, curr_mins2            &
-                             , psim , psih , gz1oz0             &
-                             , chklowq                          &
+                             , chklowq                          & ! RASM: elevate psim, psih, gz1oz0 to state
+                             , rasm_rad_fl                      & ! RASM: add logical rasm_rad_fl
                              , cu_act_flag , hol , th_phy       &
                              , pi_phy , p_phy , grid%t_phy      &
                              , dz8w , p8w , t8w                 &
@@ -835,6 +840,15 @@ BENCH_START(calc_p_rho_tim)
                              , restart_flag=restart_flag        &
                              , feedback_is_ready=feedback_is_ready    &
                             )
+
+! RASM (Juanxiong He): deallocate *cfl_tmp if rasm_rad_fl
+#ifdef RASMCOUPLED
+     if(rasm_rad_fl) then 
+        DEALLOCATE(max_vert_cfl_tmp)
+        DEALLOCATE(max_horiz_cfl_tmp)
+        return
+     endif 
+#endif
 
 #ifdef DM_PARALLEL
        IF ( config_flags%bl_pbl_physics == MYNNPBLSCHEME ) THEN
@@ -853,8 +867,7 @@ BENCH_START(calc_p_rho_tim)
                              , ph_tendf, mu_tendf               &
                              , tke_tend                         &
                              , adapt_step_flag , curr_secs      &
-                             , psim , psih , gz1oz0             &
-                             , chklowq                          &
+                             , chklowq                          & ! RASM: elevate psim, psih, gz1oz0 to state
                              , cu_act_flag , hol , th_phy       &
                              , pi_phy , p_phy , grid%t_phy      &
                              , dz8w , p8w , t8w                 &

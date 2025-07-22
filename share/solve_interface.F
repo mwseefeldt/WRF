@@ -1,7 +1,8 @@
 !WRF:MEDIATION_LAYER:ADT_BARRIER
 !
 
-SUBROUTINE solve_interface ( grid ) 
+! RASM (Juanxiong He): add flag to trigger radiation related processing
+SUBROUTINE solve_interface ( grid, rasm_rad_fl ) 
 
    USE module_domain
    USE module_timing
@@ -23,11 +24,21 @@ SUBROUTINE solve_interface ( grid )
    TYPE(domain) , INTENT(INOUT)  :: grid
    TYPE (grid_config_rec_type)   :: config_flags
 
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   LOGICAL, INTENT(INOUT), OPTIONAL              ::  rasm_rad_fl
+   LOGICAL                                       ::  lrasm_rad_fl
+
    INTEGER     :: idum1, idum2
    CHARACTER(len=256) :: dbg_msg
 
    CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
    CALL set_scalar_indices_from_config ( grid%id , idum1 , idum2 )
+
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   lrasm_rad_fl = .false.
+   IF (present(rasm_rad_fl)) THEN
+      lrasm_rad_fl = rasm_rad_fl
+   ENDIF
 
 #if (EM_CORE == 1 && DA_CORE != 1)
    
@@ -46,7 +57,8 @@ SUBROUTINE solve_interface ( grid )
                )
    ELSE
 #endif
-      CALL solve_em  ( grid , config_flags  &
+      ! RASM (Juanxiong He): add flag to trigger radiation related processing
+      CALL solve_em  ( grid , config_flags, lrasm_rad_fl  &
 !
 # include "actual_new_args.inc"
 !

@@ -20,7 +20,8 @@ CONTAINS
                              , tke_tend                         &
                              , adapt_step_flag , curr_secs      &
                              , curr_mins2                       &
-                             , psim , psih , gz1oz0 , chklowq   &
+                             , chklowq                          & ! RASM: elevate psim, psih, gz1oz0 to state
+                             , rasm_rad_fl                      & ! RASM: add logical rasm_rad_fl
                              , cu_act_flag , hol , th_phy       &
                              , pi_phy , p_phy , t_phy           &
                              , dz8w , p8w , t8w                 &
@@ -92,9 +93,6 @@ CONTAINS
     REAL    ,DIMENSION(ims:ime,1:1,jms:jme,num_fdda2d),INTENT(INOUT)      :: fdda2d
     REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme,num_aerod),INTENT(INOUT)   :: aerod
     REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme,num_aerocu),INTENT(INOUT), OPTIONAL  ::aerocu
-    REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: psim
-    REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: psih
-    REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: gz1oz0
     REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: chklowq
     LOGICAL ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: cu_act_flag
     REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT)         :: hol
@@ -118,6 +116,9 @@ CONTAINS
 
     INTEGER, INTENT(IN)                           ::  k_start, k_end
     LOGICAL, INTENT(IN), OPTIONAL                 ::  f_flux
+
+    ! RASM (Juanxiong He): flag to trigger radiation related processing
+    LOGICAL, INTENT(INOUT)                        ::  rasm_rad_fl
 
     LOGICAL, INTENT(IN), OPTIONAL                 :: restart_flag  
 
@@ -440,6 +441,7 @@ BENCH_START(rad_driver_tim)
      &        ,LWCF=grid%lwcf                                                  &
      &        ,SWCF=grid%swcf                                                  &
      &        ,OLR=grid%olr                                                    &
+     &        ,LWUPS=grid%lwups                                                & ! RASM: LW up sfc from coupler
      &        ,AERODM=grid%aerodm, PINA=grid%pina, AODTOT=grid%aodtot          &
      &        ,OZMIXM=grid%ozmixm, PIN=grid%pin                                &
      &        ,M_PS_1=grid%m_ps_1, M_PS_2=grid%m_ps_2, AEROSOLC_1=grid%aerosolc_1        &
@@ -605,7 +607,7 @@ BENCH_START(surf_driver_tim)
      &        ,DZ8W=dz8w          ,DZS=grid%dzs            ,FLHC=grid%flhc          &
      &        ,FM=grid%fm         ,FHH=grid%fh                                      &
      &        ,FLQC=grid%flqc          ,GLW=grid%glw            ,GRDFLX=grid%grdflx      &
-     &        ,GSW=grid%gsw    ,SWDOWN=grid%swdown        ,GZ1OZ0=gz1oz0      ,HFX=grid%hfx              &
+     &        ,GSW=grid%gsw    ,SWDOWN=grid%swdown        ,GZ1OZ0=grid%gz1oz0      ,HFX=grid%hfx         &
      &        ,HT=grid%ht              ,IFSNOW=config_flags%ifsnow      ,ISFFLX=config_flags%isfflx      &
      &        ,FRACTIONAL_SEAICE=config_flags%fractional_seaice           &
      &        ,SEAICE_ALBEDO_OPT=config_flags%seaice_albedo_opt           &
@@ -631,10 +633,10 @@ BENCH_START(surf_driver_tim)
      &        ,IVGTYP=grid%ivgtyp      ,LH=grid%lh              ,LOWLYR=grid%lowlyr      &
      &        ,MAVAIL=grid%mavail      ,NUM_SOIL_LAYERS=config_flags%num_soil_layers        &
      &        ,P8W=grid%p_hyd_w            ,PBLH=grid%pblh          ,PI_PHY=pi_phy      &
-     &        ,PSFC=grid%psfc          ,PSHLTR=grid%pshltr      ,PSIH=psih          &
+     &        ,PSFC=grid%psfc          ,PSHLTR=grid%pshltr      ,PSIH=grid%psih          &
      &        ,BLDT=grid%bldt     ,CURR_SECS=curr_secs, ADAPT_STEP_FLAG=adapt_step_flag  &
      &        ,BLDTACTTIME=grid%bldtacttime                                              & 
-     &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,Q10=grid%q10            &
+     &        ,PSIM=grid%psim          ,P_PHY=grid%p_hyd        ,Q10=grid%q10            &
      &        ,Q2=grid%q2              ,QFX=grid%qfx            ,QSFC=grid%qsfc          &
      &        ,QSHLTR=grid%qshltr      ,QZ0=grid%qz0            ,RAINCV=grid%raincv      &
      &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics         ,RHO=grid%rho            &
@@ -1125,11 +1127,11 @@ BENCH_START(pbl_driver_tim)
      &        ,EXCH_H=grid%exch_h     ,EXCH_M=grid%exch_m                           &
      &        ,FM=grid%fm         ,FHH=grid%fh                                      &
      &        ,F=grid%f  ,GRDFLX=grid%grdflx      &
-     &        ,GZ1OZ0=gz1oz0      ,HFX=grid%hfx            ,HT=grid%ht              &
+     &        ,GZ1OZ0=grid%gz1oz0 ,HFX=grid%hfx            ,HT=grid%ht              &
      &        ,ID=grid%id         ,ITIMESTEP=grid%itimestep     ,KPBL=grid%kpbl          &
      &        ,LH=grid%lh              ,LOWLYR=grid%lowlyr      ,P8W=grid%p_hyd_w   &
-     &        ,PBLH=grid%pblh          ,PI_PHY=pi_phy      ,PSIH=psih          &
-     &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,QFX=grid%qfx            &
+     &        ,PBLH=grid%pblh          ,PI_PHY=pi_phy      ,PSIH=grid%psih     &
+     &        ,PSIM=grid%psim     ,P_PHY=grid%p_hyd        ,QFX=grid%qfx            &
      &        ,QSFC=grid%qsfc          ,QZ0=grid%qz0  ,MIXHT=mixht                  &
      &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics                   &
      &        ,RHO=grid%rho            ,RQCBLTEN=grid%rqcblten  ,RQIBLTEN=grid%rqiblten  &

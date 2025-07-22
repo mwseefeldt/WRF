@@ -1,4 +1,4 @@
-SUBROUTINE solve_em      ( grid , config_flags     &
+SUBROUTINE solve_em      ( grid , config_flags, rasm_rad_fl,     &
 !
 #include <dummy_new_args.inc>
 !
@@ -11,6 +11,8 @@ SUBROUTINE solve_em      ( grid , config_flags     &
    !  Input data.
    TYPE(domain) , INTENT(INOUT)                  :: grid
    TYPE (grid_config_rec_type) , INTENT(IN)      :: config_flags
+   ! RASM (Juanxiong He): flag to trigger radiation related processing
+   LOGICAL, INTENT(INOUT)                        ::  rasm_rad_fl
 
 #include <dummy_new_decl.inc>
 
