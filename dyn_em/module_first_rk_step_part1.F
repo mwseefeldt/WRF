@@ -402,6 +402,8 @@ BENCH_START(rad_driver_tim)
      &        , qc_bl=grid%qc_bl,qi_bl=grid%qi_bl,cldfra_bl=grid%cldfra_bl&
      &        , re_cloud=grid%re_cloud, re_ice=grid%re_ice, re_snow=grid%re_snow & ! G. Thompson
      &        , has_reqc=grid%has_reqc, has_reqi=grid%has_reqi, has_reqs=grid%has_reqs & ! G. Thompson
+     &        , EFFCS=grid%effcs, EFFIS=grid%effis                        & ! cpl_rad_mp: RRTMG rad Morrison mp
+     &        , CPL_RAD_MP=config_flags%cpl_rad_mp                        & ! cpl_rad_mp: RRTMG rad Morrison mp
      &        , PB=grid%pb                                                &
      &        , F_ICE_PHY=grid%f_ice_phy,F_RAIN_PHY=grid%f_rain_phy       &
      &        , F_QNC=F_QNC                                               &

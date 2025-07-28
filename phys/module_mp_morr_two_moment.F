@@ -574,6 +574,7 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
 !jdf		   ,C2PREC3D,CSED3D,ISED3D,SSED3D,GSED3D,RSED3D & ! HM ADD, WRF-CHEM
                ,wetscav_on, rainprod, evapprod                      &
 		   ,QLSINK,PRECR,PRECI,PRECS,PRECG &        ! HM ADD, WRF-CHEM
+               ,effcs, effis, cpl_rad_mp                & ! cpl_rad_mp: RRTMG rad Morrison mp
                                             )
  
 ! QV - water vapor mixing ratio (kg/kg)
@@ -674,6 +675,13 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
    REAL , DIMENSION( ims:ime , jms:jme ) , INTENT(IN) ::       ht
 
    LOGICAL, optional, INTENT(IN) :: wetscav_on
+
+! RASM: cpl_rad_mp - coupling of ice and liquid radii sizes between RRTMG rad and Morrison mp
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                 effcs, &
+                                                           effis
+   INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
 
    ! LOCAL VARIABLES
 
@@ -883,10 +891,13 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
           IF ( PRESENT( PRECG ) ) PRECG(I,K,J) = GSED(K)
 ! EFFECTIVE RADIUS FOR RADIATION CODE (currently not coupled)
 ! HM, ADD LIMIT TO PREVENT BLOWING UP OPTICAL PROPERTIES, 8/18/07
-!          EFFCS(I,K,J)     = MIN(EFFC(I,K,J),50.)
-!          EFFCS(I,K,J)     = MAX(EFFCS(I,K,J),1.)
+! RASM: cpl_rad_mp - set the EFFCS and EFFIS - the following code is commented out in
+!                    the original unmodified code
+          EFFCS(I,K,J)     = MIN(EFFC(I,K,J),50.)
+          EFFCS(I,K,J)     = MAX(EFFCS(I,K,J),1.)
 !          EFFIS(I,K,J)     = MIN(EFFI(I,K,J),130.)
-!          EFFIS(I,K,J)     = MAX(EFFIS(I,K,J),13.)
+          EFFIS(I,K,J)     = MIN(EFFS(I,K,J),130.) ! modified by A. Solomon to use snow not ice
+          EFFIS(I,K,J)     = MAX(EFFIS(I,K,J),13.)
 
 #if ( WRF_CHEM == 1)
            IF ( has_wetscav ) THEN

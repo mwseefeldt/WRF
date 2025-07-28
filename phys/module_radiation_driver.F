@@ -100,6 +100,7 @@ CONTAINS
               , cldfra_dp, cldfra_sh                                      &
               , re_cloud, re_ice, re_snow                                 &
               , has_reqc, has_reqi, has_reqs                              &
+              , effcs, effis, cpl_rad_mp                                  & ! cpl_rad_mp: RRTMG rad Morrison mp
               , PB                                                        &
               , F_ICE_PHY,F_RAIN_PHY                                      &
               , F_QNC                                                     &
@@ -848,6 +849,13 @@ CONTAINS
 !..G. Thompson
    REAL, DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(INOUT):: re_cloud, re_ice, re_snow
    INTEGER, INTENT(INOUT):: has_reqc, has_reqi, has_reqs
+
+! RASM: cpl_rad_mp - coupling of ice and liquid radii sizes between RRTMG rad and Morrison mp
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                 effcs, &
+                                                           effis
+   INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                     &
          OPTIONAL,                                                   &
@@ -2074,6 +2082,7 @@ CONTAINS
                   F_QI=F_QI,F_QS=F_QS,F_QG=F_QG,                    &
                   RE_CLOUD=re_cloud,RE_ICE=re_ice,RE_SNOW=re_snow,  & ! G. Thompson
                   has_reqc=has_reqc,has_reqi=has_reqi,has_reqs=has_reqs, & ! G. Thompson
+                  EFFCS=effcs, EFFIS=effis, CPL_RAD_MP=cpl_rad_mp,  & ! cpl_rad_mp: RRTMG rad Morrison mp
 #if ( WRF_CHEM == 1 )
                   TAUAERLW1=tauaerlw1,TAUAERLW2=tauaerlw2,          & ! jcb
                   TAUAERLW3=tauaerlw3,TAUAERLW4=tauaerlw4,          & ! jcb
@@ -2609,6 +2618,7 @@ CONTAINS
                      F_QI=f_qi,F_QS=f_qs,F_QG=f_qg,                    &
                      RE_CLOUD=re_cloud,RE_ICE=re_ice,RE_SNOW=re_snow,  & ! G. Thompson
                      has_reqc=has_reqc,has_reqi=has_reqi,has_reqs=has_reqs, & ! G. Thompson
+                     EFFCS=effcs, EFFIS=effis, CPL_RAD_MP=cpl_rad_mp,  & ! cpl_rad_mp: RRTMG rad Morrison mp
 #if ( WRF_CHEM == 1 )
                      TAUAER300=tauaer300,TAUAER400=tauaer400,          & ! jcb
                      TAUAER600=tauaer600,TAUAER999=tauaer999,          & ! jcb
