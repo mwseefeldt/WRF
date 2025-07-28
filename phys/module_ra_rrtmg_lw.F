@@ -11588,6 +11588,7 @@ CONTAINS
                        f_qv, f_qc, f_qr, f_qi, f_qs, f_qg,        &
                        re_cloud, re_ice, re_snow,                 &  ! G. Thompson
                        has_reqc, has_reqi, has_reqs,              &  ! G. Thompson
+                       effcs, effis, cpl_rad_mp,                  & ! cpl_rad_mp: RRTMG rad Morrison mp
                        tauaerlw1,tauaerlw2,tauaerlw3,tauaerlw4,   & ! czhao 
                        tauaerlw5,tauaerlw6,tauaerlw7,tauaerlw8,   & ! czhao 
                        tauaerlw9,tauaerlw10,tauaerlw11,tauaerlw12,   & ! czhao 
@@ -11677,6 +11678,13 @@ CONTAINS
                                                           re_ice, &
                                                          re_snow
    INTEGER, INTENT(IN):: has_reqc, has_reqi, has_reqs
+
+! RASM: cpl_rad_mp - coupling of ice and liquid radii sizes between RRTMG rad and Morrison mp
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                 effcs, &
+                                                           effis
+   INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
 
    real pi,third,relconst,lwpmin,rhoh2o
 
@@ -11886,6 +11894,10 @@ CONTAINS
                                         reice1d, &
                                        resnow1d
 
+! RASM: cpl_rad_mp - need 1d ice and liquid radii sizes for coupling between RRTMG rad and Morrison mp
+    real, dimension(1, 1:kte-kts+1)::   effcs1d, &
+                                        effis1d
+!
     real :: gliqwp, gicewp, gsnowp, gravmks
 
 !
@@ -12262,6 +12274,13 @@ CONTAINS
 
          ENDIF
 
+! RASM: cpl_rad_mp - convert 3D liquid and ice radii to 1D for use in coupling with Morrison mp
+         DO K=kts,kte
+            ! Now set to the radius passed from Morrison
+            EFFCS1D(ncol,K) = EFFCS(I,K,J)
+            EFFIS1D(ncol,K) = EFFIS(I,K,J)
+         ENDDO
+
 ! Layer indexing goes bottom to top here for all fields.
 ! Water vapor and ozone are converted from mmr to vmr. 
 ! Pressures are in units of mb here. 
@@ -12576,6 +12595,22 @@ CONTAINS
             call reicalc(ncol, pcols, pver, tlay, reice)
 
 
+! RASM: cpl_rad_mp - Overwrite reliq and reice (prescribed effective radii) with predicted radii
+!                    from Morrison microphysics scheme if flag is set in namelist
+     if ( cpl_rad_mp == 1) then
+      do k = kts,kte
+         reliq(ncol,k)=EFFCS1D(ncol,k)
+         reice(ncol,k)=EFFIS1D(ncol,k)
+! put limits on rel and rei to prevent overflow for optical property calcs
+! Note that the lower limit for the liquid drop size is set to 2.5um, which is the rrtmg
+! lower limit instead of the morrison lower limit (1.0um). All other sizes are consistent
+! with limit set in the Morrison scheme.
+         reliq(ncol,k)=min(reliq(ncol,k),50.) !limits consistent with morrison
+         reliq(ncol,k)=max(reliq(ncol,k),2.5)
+         reice(ncol,k)=min(reice(ncol,k),130.)
+         reice(ncol,k)=max(reice(ncol,k),13.)
+      end do
+     else
 !..If we already have effective radius of cloud and ice, then just overwrite what
 !.. was computed in the relcalc and reicalc subroutines above.
 
@@ -12594,6 +12629,8 @@ CONTAINS
             reice(ncol,k) = reice1d(ncol,k)
          end do
       endif
+
+    endif  ! cpl_rad_mp
 
 ! Limit upper bound of reice for Fu ice parameterization and convert
 ! from effective radius to generalized effective size (*1.0315; Fu, 1996)

@@ -161,6 +161,7 @@
       CALL nl_set_sf_ocean_physics( grid%id, 0 )
 #endif
       CALL nl_set_fractional_seaice( grid%id, 0 )
+      CALL nl_set_cpl_rad_mp( grid%id, 0 )  ! coupling of RRTMG radiation to Morrison mp
       CALL nl_set_gwd_opt( grid%id, 0 )
       CALL nl_set_feedback( grid%id, 0 )
       ! set bc
@@ -303,6 +304,7 @@
       CALL nl_set_sf_ocean_physics( grid%id, 0)
 #endif
       CALL nl_set_fractional_seaice( grid%id, grid%fractional_seaice)
+      CALL nl_set_cpl_rad_mp( grid%id, grid%cpl_rad_mp) ! coupling of RRTMG radiation to Morrison mp
       CALL nl_set_gwd_opt( grid%id, grid%gwd_opt)
       CALL nl_set_feedback( grid%id, 0 )
 #if (EM_CORE == 1)
