@@ -136,6 +136,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,ke_diag                                           &
                       ,re_cloud, re_ice, re_snow                         & ! G. Thompson
                       ,has_reqc, has_reqi, has_reqs                      & ! G. Thompson
+                      ,effcs, effis, cpl_rad_mp                          & ! cpl_rad_mp: RRTMG rad Morrison mp
                       ,ccn_conc                                          & ! RAS
                       ,scalar,num_scalar                                   &
                       ,kext_ql,kext_qs,kext_qg            &
@@ -740,6 +741,13 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    REAL, DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(INOUT) ::  & ! G. Thompson
                  re_cloud, re_ice, re_snow
    INTEGER, INTENT(IN):: has_reqc, has_reqi, has_reqs
+
+! RASM: cpl_rad_mp - coupling of ice and liquid radii sizes between RRTMG rad and Morrison mp
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                 effcs, &
+                                                           effis
+   INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
 
   INTEGER,           INTENT(IN   )    :: aercu_opt
 # if (EM_CORE == 1)
@@ -1638,6 +1646,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,EVAPPROD=evapprod,RAINPROD=rainprod          &
 #endif
                  ,PRECR=precr,PRECI=preci,PRECS=precs,PRECG=precg   & ! jdf for wrf-chem
+                 ,EFFCS=effcs, EFFIS=effis, CPL_RAD_MP=cpl_rad_mp  & ! cpl_rad_mp: RRTMG rad Morrison mp
                                                                     )
         ELSE
            Call wrf_error_fatal( 'arguments not present for calling morrison two moment')

@@ -1334,6 +1334,10 @@ state   real    F_RAIN_PHY     ikj     misc         1         -      rhdu     "F
 state   real    F_RIMEF_PHY    ikj     misc         1         -      rhdu     "F_RIMEF_PHY"          "MASS RATIO OF RIMED ICE "         ""
 state   real    qndropsource   ikj     misc         1         -      r        "qndropsource"         "Droplet number source"   "#/kg/s"
 
+# state variables for coupling Morrison microphysics effective radii to radiation
+state    real  EFFCS           ikj      misc        1         -      rhdu     "EFFCS"                 "CLOUD DROPLET EFFECTIVE RADIUS"                   "micron"
+state    real  EFFIS           ikj      misc        1         -      rhdu     "EFFIS"                 "CLOUD ICE EFFECTIVE RADIUS"                       "micron"
+
 # cyl 3DPWP variables
 state   real    OM_TMP        i{nocnl}j      misc         1        Z     i012rhdu=(copy_fcnm)f=(c2f_interp:grid_id)    "OM_TMP" "temperature"   "k"
 state   real    OM_S          i{nocnl}j      misc         1        Z     i012rhdu=(copy_fcnm)f=(c2f_interp:grid_id)  "OM_S" "salinity"       "degree"
@@ -2663,6 +2667,9 @@ rconfig   integer aer_fire_emit_opt       derived               1              0
 rconfig   integer wif_fire_inj            namelist,physics      max_domains    1       irh   "wif_fire_inj"   "Vertically distribute biomass burning emissions in Thompson-MP-Aero"  " "
 rconfig   integer use_mp_re               namelist,physics     	1              1       h     "use_mp_re"  "use effective radii computed in some mp schemes in RRTMG"  "flag"
 rconfig   logical insert_init_cloud       namelist,physics      1              .false. irh   "insert_init_cloud" "Insert diagnostic initial cloud using icloud=3 method (Thompson)"  "logical flag"
+
+# setting to activate coupling of Morrison microphysics effective radii to radiation
+rconfig   integer cpl_rad_mp              namelist,physics      1              0       -     "cpl_rad_mp"   "Coupled radiation-microphysics option"
 
 # The following two options are hooked into various microphysics schemes to allow for ensemble perturbations of CCN and hail/graupel PSDs - GAC (AFWA)
 rconfig   real    ccn_conc                namelist,physics      1           1.0E8      h     "ccn_conc"                 "CCN concentration"                                                             "# m-3"

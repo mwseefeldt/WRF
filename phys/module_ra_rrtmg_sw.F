@@ -10047,6 +10047,7 @@ CONTAINS
                        is_cammgmp_used, r, g,                     &
                        re_cloud,re_ice,re_snow,                   &
                        has_reqc,has_reqi,has_reqs,                &
+                       effcs, effis, cpl_rad_mp,                  & ! cpl_rad_mp: RRTMG rad Morrison mp
                        icloud, warm_rain,                         &
                        cldovrlp,idcor,                            & ! J. Henderson AER: cldovrlp namelist value
                        f_ice_phy, f_rain_phy,                     &
@@ -10203,6 +10204,13 @@ CONTAINS
                                                           RE_ICE, &
                                                          RE_SNOW
    INTEGER, INTENT(IN):: has_reqc, has_reqi, has_reqs
+
+! RASM: cpl_rad_mp - coupling of ice and liquid radii sizes between RRTMG rad and Morrison mp
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                 effcs, &
+                                                           effis
+   INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
 
    real pi,third,relconst,lwpmin,rhoh2o
 
@@ -10477,6 +10485,9 @@ CONTAINS
                                        resnow1d
     real :: gliqwp, gicewp, gsnowp, gravmks, tem1,tem2,tem3
 
+! RASM: cpl_rad_mp - need 1d ice and liquid radii sizes for coupling between RRTMG rad and Morrison mp
+    real, dimension(1, 1:kte-kts+1)::   effcs1d, &
+                                        effis1d
 !
 !    REAL   ::  TSFC,GLW0,OLR0,EMISS0,FP
     REAL   ::  FP
@@ -10864,6 +10875,13 @@ CONTAINS
 
          ENDIF
 
+! RASM: cpl_rad_mp - convert 3D liquid and ice radii to 1D for use in coupling with Morrison mp
+         DO K=kts,kte
+            ! Now set to the radius passed from Morrison
+            EFFCS1D(ncol,K) = EFFCS(I,K,J)
+            EFFIS1D(ncol,K) = EFFIS(I,K,J)
+         ENDDO
+
 ! Set cosine of solar zenith angle
          coszen(ncol) = coszrs
 ! Set solar constant (original) amontornes-bcodina 2015/09
@@ -11112,6 +11130,22 @@ CONTAINS
 
 
 
+! RASM: cpl_rad_mp - Overwrite reliq and reice (prescribed effective radii) with predicted radii
+!                    from Morrison microphysics scheme if flag is set in namelist
+     if ( cpl_rad_mp == 1) then
+      do k = kts,kte
+         reliq(ncol,k)=EFFCS1D(ncol,k)
+         reice(ncol,k)=EFFIS1D(ncol,k)
+! put limits on rel and rei to prevent overflow for optical property calcs
+! Note that the lower limit for the liquid drop size is set to 2.5um, which is the rrtmg
+! lower limit instead of the morrison lower limit (1.0um). All other sizes are consistent
+! with limit set in the Morrison scheme.
+         reliq(ncol,k)=min(reliq(ncol,k),50.) !limits consistent with morrison
+         reliq(ncol,k)=max(reliq(ncol,k),2.5)
+         reice(ncol,k)=min(reice(ncol,k),130.)
+         reice(ncol,k)=max(reice(ncol,k),13.)
+      end do
+     else
 !..If we already have effective radius of cloud and ice, then just overwrite what
 !.. was computed in the relcalc and reicalc subroutines above.
 
@@ -11130,6 +11164,7 @@ CONTAINS
          end do
       endif
 
+    endif    ! cpl_rad_mp
 
 #if 0
       if (i==80.and.j==30) then

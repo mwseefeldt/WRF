@@ -3929,6 +3929,8 @@ BENCH_START(micro_driver_tim)
       &        , RI_CURR=grid%rimi                                          &
       &        , re_cloud=grid%re_cloud, re_ice=grid%re_ice, re_snow=grid%re_snow & ! G. Thompson
       &        , has_reqc=grid%has_reqc, has_reqi=grid%has_reqi, has_reqs=grid%has_reqs & ! G. Thompson
+      &        , EFFCS=grid%effcs, EFFIS=grid%effis                       & ! cpl_rad_mp: Morrison mp
+      &        , CPL_RAD_MP=config_flags%cpl_rad_mp                       & ! cpl_rad_mp: Morrison mp
       &        , qnwfa2d=grid%qnwfa2d, qnifa2d=grid%qnifa2d, qnbca2d=grid%qnbca2d       & ! G. Thompson
       &        , qnocbb2d=grid%qnocbb2d, qnbcbb2d=grid%qnbcbb2d             & ! for biomass burning emissions
       &        , diagflag=diag_flag, do_radar_ref=config_flags%do_radar_ref &
