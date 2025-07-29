@@ -273,6 +273,10 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
 ! SET CONSTANT DROPLET CONCENTRATION (UNITS OF CM-3)
 ! IF NO COUPLING WITH WRF-CHEM
 
+! RASM: Change NDCNST for modifications to the droplet concentration
+!       The WRF default is oftentimes not considered suitable for the Arctic
+!       WRF default: NDCNST=250., RASM modified tests: NDCNST=200. (not currently used)
+!       Note: in another section of the code the value is modified for over ocean points
       NDCNST = 250.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -320,6 +324,9 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
 
       ILIQ = 0
 
+! RASM: MP_MORR_TWO_MOMENT includes a modified formulation for ice nucleation for the Arctic
+!       based on MPACE field campaign observations. This is a parameter that can be changed
+!       to potentially achieved improved results of Arctic clouds. (not currently used)
 ! SWITCH FOR ICE NUCLEATION
 ! INUC = 0, USE FORMULA FROM RASMUSSEN ET AL. 2002 (MID-LATITUDE)
 !      = 1, USE MPACE OBSERVATIONS (ARCTIC ONLY)
@@ -575,6 +582,7 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
                ,wetscav_on, rainprod, evapprod                      &
 		   ,QLSINK,PRECR,PRECI,PRECS,PRECG &        ! HM ADD, WRF-CHEM
                ,effcs, effis, cpl_rad_mp                & ! cpl_rad_mp: RRTMG rad Morrison mp
+               ,XLAT, XLAND, DRPCON                     & ! RASM: droplet concentration calculations
                                             )
  
 ! QV - water vapor mixing ratio (kg/kg)
@@ -682,6 +690,13 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
          INTENT(INOUT ) ::                                 effcs, &
                                                            effis
    INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
+! RASM: Droplet concentration calculations / modifications
+!       Read in XLAT and XLAND for droplet concentration calculation.
+!       Create variables for average, amplitude, and phase used in droplet concentration function.
+   REAL, DIMENSION(ims:ime, jms:jme), INTENT(INOUT) :: DRPCON
+   REAL, DIMENSION(ims:ime, jms:jme), INTENT(IN)    :: XLAT, XLAND
+   REAL                              :: DRPCON_DYOFF, DRPCONPT       ! LOCAL
+   REAL, DIMENSION(ims:ime, jms:jme) :: DRPCON_AMP, DRPCON_AVG       ! LOCAL
 
    ! LOCAL VARIABLES
 
@@ -825,6 +840,46 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
 
 !jdf  end do
 
+! RASM (DuVivier - March 2014): modifiy the droplet concentration to better represent the Arctic
+!   Notes: -There are different methods that were tried for this modification over the years.
+!           The code below is a collection of all of the attempted methods.
+!          -Currently (July 2025) only the land/ocean contrast is being used.
+!          -The other code is included below and commented out for possible future use.
+
+!     Implement a land/ocean contrast to the constant drop concentration
+!     XLAND = 1 (land) and XLAND = 2 (ocean/ice)
+      IF (XLAND(I,J) .gt. 1.5) THEN
+         DRPCON(I,J) = NDCNST * 0.2
+      ELSE
+         DRPCON(I,J) = NDCNST
+      END IF
+
+!     Implement a more complex change in droplet concentration that changes sinusoidally based 
+!     on day of year and linearly based on latitude. Max concentration in Arctic spring and min
+!     in Arctic fall. Not well constrained by observations (amplitude or phase). Add a latitude
+!     signal to the cycle so that the cycle increases in amplitude at high latitudes but the
+!     mean is lower. This approach is based on recommendations from Matt Shupe, Amy Solomon,
+!     and Hugh Morrison.
+!
+!     Set the number of days offset to shift seasonal NDCNST cycle. 
+!      DRPCON_DYOFF = 0.
+!     Calculate mean droplet concentration for the latitude (in degrees)
+!     Maxima and Minima determined so that LAT<40N, the average is the same
+!      DRPCON_AVG(I,J)     = ((-450.0/PI)*(XLAT(I,J)*(PI/180.))) + 350.0
+!      DRPCON_AVG(I,J)     = MIN(DRPCON_AVG(I,J),250.)  
+!      DRPCON_AVG(I,J)     = MAX(DRPCON_AVG(I,J),125.)
+!     Calculate seasonal cycle amplitude for the latitude (in degrees)
+!     Maxima and Minima determined so that LAT<40N, the cycle goes away
+!      DRPCON_AMP(I,J)     = ((270.0/PI)*(XLAT(I,J)*(PI/180.))) - 60.0
+!      DRPCON_AMP(I,J)     = MIN(DRPCON_AMP(I,J),75.)
+!      DRPCON_AMP(I,J)     = MAX(DRPCON_AMP(I,J),0.)   
+!     Implement a seasonal cycle with latitude dependence   
+!      DRPCON(I,J) = DRPCON_AVG(I,J) + DRPCON_AMP(I,J)*SIN((((2.*PI)/365.)*RADTIM_SHR) + (DRPCON_DYOFF*(2.*PI)/365.))
+
+!     Set a 1-dim value of the calculated droplet concentration for the individual grid point
+      DRPCONPT = DRPCON(I,J)
+! RASM: end droplet concentration modification
+
       call MORR_TWO_MOMENT_MICRO(QC_TEND1D, QI_TEND1D, QNI_TEND1D, QR_TEND1D,            &
        NI_TEND1D, NS_TEND1D, NR_TEND1D,                                                  &
        QC1D, QI1D, QS1D, QR1D,NI1D, NS1D, NR1D,                                          &
@@ -836,6 +891,7 @@ SUBROUTINE MP_MORR_TWO_MOMENT(ITIMESTEP,                       &
                                             ITS,ITE, JTS,JTE, KTS,KTE,                   & ! HM ADD GRAUPEL
                                     QG_TEND1D,NG_TEND1D,QG1D,NG1D,EFFG1D, &
                                     qrcu1d, qscu1d, qicu1d, &
+       DRPCONPT,                                                                         & ! RASM: DRPCON for grid point
 ! ADD SEDIMENTATION TENDENCIES
                                   QGSTEN,QRSTEN,QISTEN,QNISTEN,QCSTEN, &
                                   nc1d, nc_tend1d, iinum, C2PREC,CSED,ISED,SSED,GSED,RSED & !wrf-chem
@@ -945,6 +1001,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
                                             IMS,IME, JMS,JME, KMS,KME,           &
                                             ITS,ITE, JTS,JTE, KTS,KTE,           & ! ADD GRAUPEL
                         QG3DTEN,NG3DTEN,QG3D,NG3D,EFFG,qrcu1d,qscu1d, qicu1d,    &
+       DRPCONPT,                                                                 & ! RASM: DRPCON for grid point
                         QGSTEN,QRSTEN,QISTEN,QNISTEN,QCSTEN, &
                         nc3d,nc3dten,iinum, & ! wrf-chem
 				c2prec,CSED,ISED,SSED,GSED,RSED  &  ! hm added, wrf-chem
@@ -1015,6 +1072,9 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       REAL, DIMENSION(KTS:KTE) ::  NG3DTEN            ! GRAUPEL NUMB CONC TENDENCY (1/KG/S)
       REAL, DIMENSION(KTS:KTE) ::  QG3D            ! GRAUPEL MIX RATIO (KG/KG)
       REAL, DIMENSION(KTS:KTE) ::  NG3D            ! GRAUPEL NUMBER CONC (1/KG)
+
+! RASM: DRPCON for grid point
+      REAL ::  DRPCONPT                               ! DRPCON for grid point (CM-3)
 
 ! HM, ADD 1/16/07, SEDIMENTATION TENDENCIES FOR MIXING RATIO
 
@@ -1501,10 +1561,13 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! INUM = 0, PREDICT DROPLET NUMBER
 ! INUM = 1, SET CONSTANT DROPLET NUMBER
 
-         IF (iinum.EQ.1) THEN
-! CONVERT NDCNST FROM CM-3 TO KG-1
-            NC3D(K)=NDCNST*1.E6/RHO(K)
-         END IF
+! RASM (DuVivier - April 2014 / Seefeldt): remove IF/THEN iinum as it is WRF-Chem related
+!          IF (iinum.EQ.1) THEN
+!! CONVERT NDCNST FROM CM-3 TO KG-1
+!            NC3D(K)=NDCNST*1.E6/RHO(K)
+!          END IF
+! RASM (DuVivier - April 2014 / Seefeldt): convert DRPCONPT from cm-3 to kg-1
+            NC3D(K)=DRPCONPT*1.E6/RHO(K)
 
 ! GET SIZE DISTRIBUTION PARAMETERS
 
@@ -2116,10 +2179,13 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! INUM = 0, PREDICT DROPLET NUMBER
 ! INUM = 1, SET CONSTANT DROPLET NUMBER
 
-         IF (iinum.EQ.1) THEN
-! CONVERT NDCNST FROM CM-3 TO KG-1
-            NC3D(K)=NDCNST*1.E6/RHO(K)
-         END IF
+! RASM (DuVivier - April 2014 / Seefeldt): remove IF/THEN iinum as it is WRF-Chem related
+!          IF (iinum.EQ.1) THEN
+!! CONVERT NDCNST FROM CM-3 TO KG-1
+!            NC3D(K)=NDCNST*1.E6/RHO(K)
+!          END IF
+! RASM (DuVivier - April 2014 / Seefeldt): convert DRPCONPT from cm-3 to kg-1
+            NC3D(K)=DRPCONPT*1.E6/RHO(K)
 
 ! CALCULATE SIZE DISTRIBUTION PARAMETERS
 ! MAKE SURE NUMBER CONCENTRATIONS AREN'T NEGATIVE
@@ -4059,10 +4125,13 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
           NC3D(K) = MIN(NC3D(K),(NANEW1+NANEW2)/RHO(K))
           END IF
 ! SWITCH FOR CONSTANT DROPLET NUMBER
-          IF (iinum.EQ.1) THEN 
-! CHANGE NDCNST FROM CM-3 TO KG-1
-             NC3D(K) = NDCNST*1.E6/RHO(K)
-          END IF
+! RASM (DuVivier - April 2014 / Seefeldt): remove IF/THEN iinum as it is WRF-Chem related
+!          IF (iinum.EQ.1) THEN
+!! CONVERT NDCNST FROM CM-3 TO KG-1
+!            NC3D(K)=NDCNST*1.E6/RHO(K)
+!          END IF
+! RASM (DuVivier - April 2014 / Seefeldt): convert DRPCONPT from cm-3 to kg-1
+            NC3D(K)=DRPCONPT*1.E6/RHO(K)
 
       END DO !!! K LOOP
 

@@ -137,6 +137,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,re_cloud, re_ice, re_snow                         & ! G. Thompson
                       ,has_reqc, has_reqi, has_reqs                      & ! G. Thompson
                       ,effcs, effis, cpl_rad_mp                          & ! cpl_rad_mp: RRTMG rad Morrison mp
+                      ,drpcon                                            & ! RASM: droplet concentration
                       ,ccn_conc                                          & ! RAS
                       ,scalar,num_scalar                                   &
                       ,kext_ql,kext_qs,kext_qg            &
@@ -748,6 +749,10 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
          INTENT(INOUT ) ::                                 effcs, &
                                                            effis
    INTEGER, INTENT(IN  ),OPTIONAL ::                  cpl_rad_mp
+
+! RASM: droplet concentration calculations / modifications
+   REAL, DIMENSION( ims:ime, jms:jme),                            &
+         INTENT(INOUT ) ::                                DRPCON
 
   INTEGER,           INTENT(IN   )    :: aercu_opt
 # if (EM_CORE == 1)
@@ -1647,6 +1652,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 #endif
                  ,PRECR=precr,PRECI=preci,PRECS=precs,PRECG=precg   & ! jdf for wrf-chem
                  ,EFFCS=effcs, EFFIS=effis, CPL_RAD_MP=cpl_rad_mp  & ! cpl_rad_mp: RRTMG rad Morrison mp
+                 ,XLAT=XLAT, XLAND=XLAND, DRPCON=DRPCON  &  ! RASM: droplet concentration calculations
                                                                     )
         ELSE
            Call wrf_error_fatal( 'arguments not present for calling morrison two moment')
