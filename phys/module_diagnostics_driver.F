@@ -995,43 +995,59 @@ CONTAINS
 
          CALL domain_clock_get ( grid, current_time=currentTime)
 
-         CALL mean_output_calc(                                               &
-                        is_restart=config_flags%restart                       &
-                       ,CURRENTTIME=currentTime                               &
-                       ,stats_interval=config_flags%mean_interval             &
-                       ,output_freq=config_flags%mean_freq                    &
-                       ,run_days=config_flags%run_days                        &
-                       ,DT=grid%dt, XTIME=grid%xtime                          &
-                       ,PSFC=grid%psfc, PSFC_MEAN=grid%psfc_mean              &
-                       ,TSK=grid%tsk, TSK_MEAN=grid%tsk_mean                  &
-                       ,PMSL_MEAN=grid%pmsl_mean                              &
-                       ,T2=grid%t2, T2_MEAN=grid%t2_mean                      &
-                       ,T=grid%th_phy_m_t0, P=grid%p, PB=grid%pb              &
-                       ,MOIST=grid%moist(:,:,:,P_QV), HT=grid%ht              &
-                       ,TH2=grid%th2, TH2_MEAN=grid%th2_mean                  &
-                       ,Q2=grid%q2, Q2_MEAN=grid%q2_mean                      &
-                       ,U10=grid%u10, U10_MEAN=grid%u10_mean                  &
-                       ,V10=grid%v10, V10_MEAN=grid%v10_mean                  &           
-                       ,HFX=grid%hfx, HFX_MEAN=grid%hfx_mean                  &
-                       ,LH=grid%lh, LH_MEAN=grid%lh_mean                      &
-                       ,SWDNB=grid%swdnb, SWDNB_MEAN=grid%swdnb_mean          &
-                       ,GLW=grid%glw , GLW_MEAN=grid%glw_mean                 &
-                       ,LWUPB=grid%lwupb, LWUPB_MEAN=grid%lwupb_mean          &
-                       ,SWUPB=grid%swupb, SWUPB_MEAN=grid%swupb_mean          &
-                       ,SWUPT=grid%swupt, SWUPT_MEAN=grid%swupt_mean          &
-                       ,SWDNT=grid%swdnt, SWDNT_MEAN=grid%swdnt_mean          &
-                       ,LWUPT=grid%lwupt, LWUPT_MEAN=grid%lwupt_mean          &
-                       ,LWDNT=grid%lwdnt, LWDNT_MEAN=grid%lwdnt_mean          &
-                       ,AVGOUTALARM=grid%alarms(AUXHIST5_ALARM)               &
-                       ,AVGOUTDATESTR=grid%OUTDATE_MEAN                       &
-                       ,NSTEPS=grid%NSTEPS_MEAN                               &
+         CALL mean_output_calc(                                                   &
+                        is_restart=config_flags%restart                           &
+                       ,CURRENTTIME=currentTime                                   &
+                       ,stats_interval=config_flags%mean_interval                 &
+                       ,output_freq=config_flags%mean_freq                        &
+                       ,run_days=config_flags%run_days                            &
+                       ,DT=grid%dt, XTIME=grid%xtime                              &
+                       ,PSFC=grid%psfc, PSFC_MEAN=grid%psfc_mean                  &
+                       ,TSK=grid%tsk, TSK_MEAN=grid%tsk_mean                      &
+                       ,PMSL_MEAN=grid%pmsl_mean                                  &
+                       ,T2=grid%t2, T2_MEAN=grid%t2_mean                          &
+                       ,T=grid%th_phy_m_t0, P=grid%p, PB=grid%pb                  &
+                       ,HT=grid%ht, P8W=p8w, MOIST=grid%moist                     &
+                       ,TH2=grid%th2, TH2_MEAN=grid%th2_mean                      &
+                       ,Q2=grid%q2, Q2_MEAN=grid%q2_mean                          &
+                       ,U10=grid%u10, U10_MEAN=grid%u10_mean                      &
+                       ,V10=grid%v10, V10_MEAN=grid%v10_mean                      &
+                       ,HFX=grid%hfx, HFX_MEAN=grid%hfx_mean                      &
+                       ,LH=grid%lh, LH_MEAN=grid%lh_mean                          &
+                       ,SWDNB=grid%swdnb, SWDNB_MEAN=grid%swdnb_mean              &
+                       ,GLW=grid%glw , GLW_MEAN=grid%glw_mean                     &
+                       ,LWUPB=grid%lwupb, LWUPB_MEAN=grid%lwupb_mean              &
+                       ,SWUPB=grid%swupb, SWUPB_MEAN=grid%swupb_mean              &
+                       ,SWUPT=grid%swupt, SWUPT_MEAN=grid%swupt_mean              &
+                       ,SWDNT=grid%swdnt, SWDNT_MEAN=grid%swdnt_mean              &
+                       ,LWUPT=grid%lwupt, LWUPT_MEAN=grid%lwupt_mean              &
+                       ,LWDNT=grid%lwdnt, LWDNT_MEAN=grid%lwdnt_mean              &
+                       ,RAINCV=grid%raincv, RAINCV_MEAN=grid%raincv_mean          &
+                       ,RAINNCV=grid%rainncv, RAINNCV_MEAN=grid%rainncv_mean      &
+                       ,RAINSHV=grid%rainshv, RAINSHV_MEAN=grid%rainshv_mean      &
+                       ,IWP_MEAN=grid%iwp_mean                                    &
+                       ,LWP_MEAN=grid%lwp_mean                                    &
+                       ,PWV_MEAN=grid%pwv_mean                                    &
+                       ,SWVISDIR=grid%swvisdir, SWVISDIR_MEAN=grid%swvisdir_mean  &
+                       ,SWVISDIF=grid%swvisdif, SWVISDIF_MEAN=grid%swvisdif_mean  &
+                       ,SWNIRDIR=grid%swnirdir, SWNIRDIR_MEAN=grid%swnirdir_mean  &
+                       ,SWNIRDIF=grid%swnirdif, SWNIRDIF_MEAN=grid%swnirdif_mean  &
+#ifdef RASMCOUPLED
+                       ,U=grid%u_2, U0_MEAN=grid%u0_mean                          &
+                       ,V=grid%v_2, V0_MEAN=grid%v0_mean                          &
+                       ,T0_MEAN=grid%t0_mean                                      &
+                       ,QV0_MEAN=grid%qv0_mean, SHUM0_MEAN=grid%shum0_mean        &
+#endif
+                       ,AVGOUTALARM=grid%alarms(AUXHIST5_ALARM)                   &
+                       ,AVGOUTDATESTR=grid%OUTDATE_MEAN                           &
+                       ,NSTEPS=grid%NSTEPS_MEAN                                   &
          ! Dimension arguments
-                       ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
-                       ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
-                       ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-                       ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)     &
-                       ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)     &
-                       ,NUM_TILES=grid%num_tiles                              &
+                       ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde         &
+                       ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme         &
+                       ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe         &
+                       ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)         &
+                       ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)         &
+                       ,NUM_TILES=grid%num_tiles                                  &
                                                                       )
       END IF RASM_DIAGS_MEAN
 
@@ -1060,7 +1076,7 @@ CONTAINS
            ,TSK=grid%tsk, TSK_DTMP=grid%tsk_dtmp                              &
            ,T2=grid%t2, T2_DTMP=grid%t2_dtmp                                  &
            ,T=grid%th_phy_m_t0, P=grid%p, PB=grid%pb                          &
-           ,MOIST=grid%moist(:,:,:,P_QV)                                     &
+           ,P8W=p8w, MOIST=grid%moist                                         &
            ,TH2=grid%th2, TH2_DTMP=grid%th2_dtmp                              &
            ,Q2=grid%q2, Q2_DTMP=grid%q2_dtmp                                  &
            ,U10=grid%u10, U10_DTMP=grid%u10_dtmp                              &
@@ -1075,6 +1091,22 @@ CONTAINS
            ,SWDNT=grid%swdnt, SWDNT_DTMP=grid%swdnt_dtmp                      &
            ,LWUPT=grid%lwupt, LWUPT_DTMP=grid%lwupt_dtmp                      &
            ,LWDNT=grid%lwdnt, LWDNT_DTMP=grid%lwdnt_dtmp                      &
+           ,RAINCV=grid%raincv, RAINCV_DTMP=grid%raincv_dtmp                  &
+           ,RAINNCV=grid%rainncv, RAINNCV_DTMP=grid%rainncv_dtmp              &
+           ,RAINSHV=grid%rainshv, RAINSHV_DTMP=grid%rainshv_dtmp              &
+           ,IWP_DTMP=grid%iwp_dtmp                                            &
+           ,LWP_DTMP=grid%lwp_dtmp                                            &
+           ,PWV_DTMP=grid%pwv_dtmp                                            &
+           ,SWVISDIR=grid%swvisdir, SWVISDIR_DTMP=grid%swvisdir_dtmp          &
+           ,SWVISDIF=grid%swvisdif, SWVISDIF_DTMP=grid%swvisdif_dtmp          &
+           ,SWNIRDIR=grid%swnirdir, SWNIRDIR_DTMP=grid%swnirdir_dtmp          &
+           ,SWNIRDIF=grid%swnirdif, SWNIRDIF_DTMP=grid%swnirdif_dtmp          &
+#ifdef RASMCOUPLED
+           ,U=grid%u_2, U0_DTMP=grid%u0_dtmp                                  &
+           ,V=grid%v_2, V0_DTMP=grid%v0_dtmp                                  &
+           ,T0_DTMP=grid%t0_dtmp                                              &
+           ,QV0_DTMP=grid%qv0_dtmp, SHUM0_DTMP=grid%shum0_dtmp                &
+#endif
            ,AVGOUTALARM=grid%alarms(AUXHIST6_ALARM)                           &
            ,DIURNOUTDATESTR=grid%OUTDATE_DIURN                                &
            ,AVG_NSTEPS=grid%NSTEPSMEAN_DIURN                                  &
@@ -1088,10 +1120,23 @@ CONTAINS
            ,LWUPB_DIURN=grid%LWUPB_DIURN, SWUPB_DIURN=grid%SWUPB_DIURN        &
            ,SWUPT_DIURN=grid%SWUPT_DIURN, SWDNT_DIURN=grid%SWDNT_DIURN        &
            ,LWUPT_DIURN=grid%LWUPT_DIURN, LWDNT_DIURN=grid%LWDNT_DIURN        &
+           ,RAINCV_DIURN=grid%RAINCV_DIURN, RAINNCV_DIURN=grid%RAINNCV_DIURN  &
+           ,RAINSHV_DIURN=grid%RAINSHV_DIURN                                  &
+           ,IWP_DIURN=grid%IWP_DIURN, LWP_DIURN=grid%LWP_DIURN                &
+           ,PWV_DIURN=grid%PWV_DIURN                                          &
+           ,SWVISDIR_DIURN=grid%SWVISDIR_DIURN                                &
+           ,SWVISDIF_DIURN=grid%SWVISDIF_DIURN                                &
+           ,SWNIRDIR_DIURN=grid%SWNIRDIR_DIURN                                &
+           ,SWNIRDIF_DIURN=grid%SNNIRDIF_DIURN                                &
+#ifdef RASMCOUPLED
+           ,U0_DIURN=grid%U0_DIURN, V0_DIURN=grid%V0_DIURN                    &
+           ,T0_DIURN=grid%T0_DIURN                                            &
+           ,QV0_DIURN=grid%QV0_DIURN, SHUM0_DIURN=grid%SHUM0_DIURN            &
+#endif
          ! Dimension arguments
            ,IDS=ids, IDE=ide, JDS=jds, JDE=jde, KDS=kds, KDE=kde              &
-           ,IMS=ims, IME=ime, JMS=jms, JME=jme, KMS=kms, KME=kme              & 
-           ,IPS=ips, IPE=ipe, JPS=jps, JPE=jpe, KPS=kps, KPE=kpe              &         
+           ,IMS=ims, IME=ime, JMS=jms, JME=jme, KMS=kms, KME=kme              &
+           ,IPS=ips, IPE=ipe, JPS=jps, JPE=jpe, KPS=kps, KPE=kpe              &
            ,I_START=grid%i_start, I_END=min(grid%i_end, ide-1)                &
            ,J_START=grid%j_start, J_END=min(grid%j_end, jde-1)                &
            ,NUM_TILES=grid%num_tiles                                          &

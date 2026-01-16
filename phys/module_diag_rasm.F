@@ -17,27 +17,40 @@ MODULE module_diag_rasm
 
 CONTAINS
 
-  SUBROUTINE mean_output_calc(                    &
-        is_restart, currentTime                   &
-       ,stats_interval, output_freq, run_days     &
-       ,dt, xtime                                 &
-       ,psfc, psfc_mean, tsk, tsk_mean            &
-       ,pmsl_mean, t2, t2_mean                    &
-       ,t, p, pb, moist, ht                       & ! vars for pmsl calc
-       ,th2, th2_mean, q2, q2_mean                &
-       ,u10, u10_mean, v10, v10_mean              &
-       ,hfx, hfx_mean, lh, lh_mean                &
-       ,swdnb, swdnb_mean, glw, glw_mean          & 
-       ,lwupb, lwupb_mean, swupb, swupb_mean      &
-       ,swupt, swupt_mean, swdnt, swdnt_mean      &
-       ,lwupt, lwupt_mean, lwdnt, lwdnt_mean      &
-       ,avgoutalarm, avgOutDateStr   &
-       ,nsteps                                    &
-       ,ids, ide, jds, jde, kds, kde              &
-       ,ims, ime, jms, jme, kms, kme              &
-       ,ips, ipe, jps, jpe, kps, kpe              & ! patch  dims
-       ,i_start, i_end, j_start, j_end            &
-       ,num_tiles                                 &
+  SUBROUTINE mean_output_calc(                      &
+        is_restart, currentTime                     &
+       ,stats_interval, output_freq, run_days       &
+       ,dt, xtime                                   &
+       ,psfc, psfc_mean, tsk, tsk_mean              &
+       ,pmsl_mean                                   &
+       ,t2, t2_mean                                 &
+       ,t, p, pb                                    &
+       ,ht, p8w, moist                              &
+       ,th2, th2_mean, q2, q2_mean                  &
+       ,u10, u10_mean, v10, v10_mean                &
+       ,hfx, hfx_mean, lh, lh_mean                  &
+       ,swdnb, swdnb_mean, glw, glw_mean            &
+       ,lwupb, lwupb_mean, swupb, swupb_mean        &
+       ,swupt, swupt_mean, swdnt, swdnt_mean        &
+       ,lwupt, lwupt_mean, lwdnt, lwdnt_mean        &
+       ,raincv, raincv_mean, rainncv, rainncv_mean  &
+       ,rainshv, rainshv_mean                       &
+       ,iwp_mean, lwp_mean, pwv_mean                &
+       ,swvisdir, swvisdir_mean                     &
+       ,swvisdif, swvisdif_mean                     &
+       ,swnirdir, swnirdir_mean                     &
+       ,swnirdif, swnirdif_mean                     &
+#ifdef RASMCOUPLED
+       ,u, u0_mean, v, v0_mean                      &
+       ,t0_mean, qv0_mean, shum0_mean               &
+#endif
+       ,avgoutalarm, avgOutDateStr                  &
+       ,nsteps                                      &
+       ,ids, ide, jds, jde, kds, kde                &
+       ,ims, ime, jms, jme, kms, kme                &
+       ,ips, ipe, jps, jpe, kps, kpe                & ! patch dims
+       ,i_start, i_end, j_start, j_end              &
+       ,num_tiles                                   &
        )
     !----------------------------------------------------------------------
 
@@ -45,6 +58,7 @@ CONTAINS
     USE module_utility
     USE module_streams
     USE module_domain, ONLY : domain_clock_get
+    USE module_state_description,  ONLY: num_moist, p_qv
 
     IMPLICIT NONE
     !======================================================================
@@ -86,22 +100,36 @@ CONTAINS
 
     REAL, INTENT(IN)                                  :: dt, xtime
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: ht
-    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: psfc, tsk, t2, th2, q2 
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: psfc, tsk, t2, th2, q2
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: u10, v10
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: hfx, lh
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swdnb, glw, lwupb, swupb
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swupt, swdnt, lwupt, lwdnt
-    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: t, p, pb, moist
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: raincv, rainncv, rainshv
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swvisdir, swvisdif, swnirdir,swnirdif
+#ifdef RASMCOUPLED
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: u, v
+#endif
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: t, p, pb, p8w
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme, num_moist ), INTENT(IN):: moist
     
-    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: psfc_mean, tsk_mean 
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: psfc_mean, tsk_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: pmsl_mean, t2_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: th2_mean, q2_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: u10_mean, v10_mean
-    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: hfx_mean, lh_mean 
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: hfx_mean, lh_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swdnb_mean, glw_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: lwupb_mean, swupb_mean
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swupt_mean, swdnt_mean
-    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: lwupt_mean, lwdnt_mean   
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: lwupt_mean, lwdnt_mean
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: raincv_mean, rainncv_mean, rainshv_mean
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: iwp_mean, lwp_mean, pwv_mean
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swvisdir_mean, swvisdif_mean
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swnirdir_mean, swnirdif_mean
+#ifdef RASMCOUPLED
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: u0_mean, v0_mean
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: t0_mean, qv0_mean, shum0_mean
+#endif
 
     ! LOCAL  VAR
     INTEGER     :: i, j, ij
@@ -111,6 +139,8 @@ CONTAINS
 
     LOGICAL     :: is_reset               ! reset averages
     LOGICAL     :: compute_avg            ! compute averages
+
+    REAL, DIMENSION( ims:ime , jms:jme ) :: raincv_rt, rainncv_rt, rainshv_rt  ! precip rates
 
     INTEGER            :: mean_interval   ! interval (s) of mean calculations
     
@@ -166,6 +196,25 @@ CONTAINS
                 swdnt_mean(i,j)=0.0
                 lwupt_mean(i,j)=0.0
                 lwdnt_mean(i,j)=0.0
+                raincv_mean(i,j)=0.0
+                rainncv_mean(i,j)=0.0
+                rainshv_mean(i,j)=0.0
+                iwp_mean(i,j)=0.0
+                lwp_mean(i,j)=0.0
+                pwv_mean(i,j)=0.0
+                swvisdir_mean(i,j)=0.0
+                swvisdif_mean(i,j)=0.0
+                swnirdir_mean(i,j)=0.0
+                swnirdif_mean(i,j)=0.0
+#ifdef RASMCOUPLED
+                u0_mean(i,j)=0.0
+                v0_mean(i,j)=0.0
+                u0_mean(i+1,j)=0.0
+                v0_mean(i,j+1)=0.0
+                t0_mean(i,j)=0.0
+                qv0_mean(i,j)=0.0
+                shum0_mean(i,j)=0.0
+#endif
              ENDDO
           ENDDO
        ENDDO
@@ -185,6 +234,11 @@ CONTAINS
     WRITE(message, *) "RASM Statistics: nsteps=",nsteps, "time_step=", (xtime+dt/60.)*60./dt, "xtime=", xtime
     CALL wrf_debug(200, message)  
 
+    ! calculate the rate variables (precip)
+    raincv_rt  = raincv/dt
+    rainncv_rt = rainncv/dt
+    rainshv_rt = rainshv/dt
+
     ! Surface Pressure
     CALL var_accum_2d(psfc,ime-ims+1,jme-jms+1,psfc_mean)
     
@@ -194,17 +248,17 @@ CONTAINS
     ! PMSL 
     CALL PMSL_accum_01(ims, ime, jms, jme, kms, kme,    &
                        ide, jde, ips, ipe, jps, jpe,    &
-                       t, p, pb, moist, ht, psfc, pmsl_mean)
+                       t, p, pb, moist(:,:,:,P_QV), ht, psfc, pmsl_mean)
 
     ! Temperature at 2M
     CALL var_accum_2d(t2,ime-ims+1,jme-jms+1,t2_mean)
-    
+
     ! Potential Temperature at 2M
     CALL var_accum_2d(th2,ime-ims+1,jme-jms+1,th2_mean)
-    
+
     ! Water Vapor Mixing Ratio at 2M
     CALL var_accum_2d(q2,ime-ims+1,jme-jms+1,q2_mean)
-    
+
     ! U-component of Wind at 10M
     CALL var_accum_2d(u10,ime-ims+1,jme-jms+1,u10_mean)
 
@@ -241,6 +295,48 @@ CONTAINS
     ! LWDNT - DOWNWELLING LONGWAVE FLUX AT TOP
     CALL var_accum_2d(lwdnt,ime-ims+1,jme-jms+1,lwdnt_mean)
 
+    ! RAINCV - CUMULUS PRECIPITATION RATE
+    CALL var_accum_2d(raincv_rt,ime-ims+1,jme-jms+1,raincv_mean)
+
+    ! RAINNCV - NONCONVECTIVE PRECIPITATION RATE
+    CALL var_accum_2d(rainncv_rt,ime-ims+1,jme-jms+1,rainncv_mean)
+
+    ! RAINSHV - SHALLOW CUMULUS PRECIPITATION RATE
+    CALL var_accum_2d(rainshv_rt,ime-ims+1,jme-jms+1,rainshv_mean)
+
+    ! IWP:LWP:PWV - AVERAGE COLUMN INTEGRATED QUANTITY 
+    CALL columm_integrated_liqud_ice_accum(ims, ime, jms, jme, kms, kme,   &
+        ide, jde, ips, ipe, jps, jpe, moist, p8w, iwp_mean, lwp_mean, pwv_mean) 
+
+    ! SWVISDIR - SHORTWAVE VIS DIRECT FLUX COMPONENT
+    CALL var_accum_2d(swvisdir,ime-ims+1,jme-jms+1,swvisdir_mean)
+
+    ! SWVISDIF - SHORTWAVE VIS DIFFUSE FLUX COMPONENT
+    CALL var_accum_2d(swvisdif,ime-ims+1,jme-jms+1,swvisdif_mean)
+
+    ! SWNIRDIR - SHORTWAVE NIR DIRECT FLUX COMPONENT
+    CALL var_accum_2d(swnirdir,ime-ims+1,jme-jms+1,swnirdir_mean)
+
+    ! SWNIRIDF - SHORTWAVE NIR DIFFUSE FLUX COMPONENT
+    CALL var_accum_2d(swnirdif,ime-ims+1,jme-jms+1,swnirdif_mean)
+
+#ifdef RASMCOUPLED
+    ! U0 - U-COMPONENT OF WIND AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(u, ime-ims+1, kme-kms+1, jme-jms+1, u0_mean) 
+
+    ! V0 - U-COMPONENT OF WIND AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(v, ime-ims+1, kme-kms+1, jme-jms+1, v0_mean)
+
+    ! T0 - TEMPERATURE AT LOWEST MODEL LEVEL
+    CALL T_accum_01( t, p, pb,  ime-ims+1, kme-kms+1, jme-jms+1, t0_mean)
+
+    ! QV0 - WATER VAPOR MIXING RATIO AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(moist(:,:,:,P_QV), ime-ims+1, kme-kms+1, jme-jms+1, qv0_mean) 
+
+    ! SHUM0 - SPECIFIC HUMIDITY AT LOWEST MODEL LEVEL
+    CALL shum_accum_01(moist(:,:,:,P_QV), ime-ims+1, kme-kms+1, jme-jms+1, shum0_mean)
+#endif
+
     CALL getAvgState(currentTime, xtime, dt, mean_interval, output_freq, compute_avg, avgOutDateStr)
     IF (compute_avg) THEN
        psfc_mean=psfc_mean/nsteps
@@ -261,8 +357,25 @@ CONTAINS
        swdnt_mean=swdnt_mean/nsteps
        lwupt_mean=lwupt_mean/nsteps
        lwdnt_mean=lwdnt_mean/nsteps
-      
-       if ( output_freq .EQ. MONTHLY) then
+       raincv_mean=raincv_mean/nsteps
+       rainncv_mean=rainncv_mean/nsteps
+       rainshv_mean=rainshv_mean/nsteps
+       iwp_mean=iwp_mean/nsteps
+       lwp_mean=lwp_mean/nsteps
+       pwv_mean=pwv_mean/nsteps
+       swvisdir_mean=swvisdir_mean/nsteps
+       swvisdif_mean=swvisdif_mean/nsteps
+       swnirdir_mean=swnirdir_mean/nsteps
+       swnirdif_mean=swnirdif_mean/nsteps
+#ifdef RASMCOUPLED
+       u0_mean=u0_mean/nsteps
+       v0_mean=v0_mean/nsteps
+       t0_mean=t0_mean/nsteps
+       qv0_mean=qv0_mean/nsteps
+       shum0_mean=shum0_mean/nsteps
+#endif
+
+if ( output_freq .EQ. MONTHLY) then
              WRITE(message, *) "RASM Statistics: MONTHLY_INTERVAL turn ON ALARM to generate output ........................"
              CALL wrf_debug(200, message)
        endif
@@ -277,39 +390,61 @@ CONTAINS
   END SUBROUTINE mean_output_calc
 
   ! RASM: Diurnal
-  SUBROUTINE diurnalcycle_output_calc(            &
-        is_restart, currentTime                   &
-       ,dt, xtime                                 &
-       ,psfc, psfc_dtmp, tsk, tsk_dtmp            &
-       ,t2, t2_dtmp                               &
-       ,t, p, pb, moist                           & ! vars for pmsl calc
-       ,th2, th2_dtmp, q2, q2_dtmp                &
-       ,u10, u10_dtmp, v10, v10_dtmp              &
-       ,hfx, hfx_dtmp, lh, lh_dtmp                &
-       ,swdnb, swdnb_dtmp, glw, glw_dtmp          & 
-       ,lwupb, lwupb_dtmp, swupb, swupb_dtmp      &
-       ,swupt, swupt_dtmp, swdnt, swdnt_dtmp      &
-       ,lwupt, lwupt_dtmp, lwdnt, lwdnt_dtmp      &
-       ,avgoutalarm                  &
-       ,diurnOutDateStr, avg_nsteps               &
-       ,diurnal_nsteps                            &
-       ,psfc_diurn, tsk_diurn, t2_diurn           &
-       ,th2_diurn, q2_diurn, u10_diurn, v10_diurn &
-       ,hfx_diurn, lh_diurn                       &
-       ,swdnb_diurn, glw_diurn                    &
-       ,lwupb_diurn, swupb_diurn                  &
-       ,swupt_diurn, swdnt_diurn                  &
-       ,lwupt_diurn, lwdnt_diurn                  &
-       ,ids, ide, jds, jde, kds, kde              &
-       ,ims, ime, jms, jme, kms, kme              &
-       ,ips, ipe, jps, jpe, kps, kpe              & ! patch  dims
-       ,i_start, i_end, j_start, j_end            &
+  SUBROUTINE diurnalcycle_output_calc(              &
+        is_restart, currentTime                     &
+       ,dt, xtime                                   &
+       ,psfc, psfc_dtmp, tsk, tsk_dtmp              &
+       ,t2, t2_dtmp                                 &
+       ,t ,p, pb                                    & ! vars for pmsl calc
+       ,p8w, moist                                  &
+       ,th2, th2_dtmp, q2, q2_dtmp                  &
+       ,u10, u10_dtmp, v10, v10_dtmp                &
+       ,hfx, hfx_dtmp, lh, lh_dtmp                  &
+       ,swdnb, swdnb_dtmp, glw, glw_dtmp            &
+       ,lwupb, lwupb_dtmp, swupb, swupb_dtmp        &
+       ,swupt, swupt_dtmp, swdnt, swdnt_dtmp        &
+       ,lwupt, lwupt_dtmp, lwdnt, lwdnt_dtmp        &
+       ,raincv, raincv_dtmp, rainncv, rainncv_dtmp  &
+       ,rainshv, rainshv_dtmp                       &
+       ,iwp_dtmp, lwp_dtmp, pwv_dtmp                &
+       ,swvisdir, swvisdir_dtmp                     &
+       ,swvisdif, swvisdif_dtmp                     &
+       ,swnirdir, swnirdir_dtmp                     &
+       ,swnirdif, swnirdif_dtmp                     &
+#ifdef RASMCOUPLED
+       ,u, u0_dtmp, v, v0_dtmp                      &
+       ,t0_dtmp, qv0_dtmp, shum0_dtmp               &
+#endif
+       ,avgoutalarm                                 &
+       ,diurnOutDateStr, avg_nsteps                 &
+       ,diurnal_nsteps                              &
+       ,psfc_diurn, tsk_diurn, t2_diurn             &
+       ,th2_diurn, q2_diurn, u10_diurn, v10_diurn   &
+       ,hfx_diurn, lh_diurn                         &
+       ,swdnb_diurn, glw_diurn                      &
+       ,lwupb_diurn, swupb_diurn                    &
+       ,swupt_diurn, swdnt_diurn                    &
+       ,lwupt_diurn, lwdnt_diurn                    &
+       ,raincv_diurn, rainncv_diurn                 &
+       ,rainshv_diurn                               &
+       ,iwp_diurn, lwp_diurn ,pwv_diurn             &
+       ,swvisdir_diurn, swvisdif_diurn              &
+       ,swnirdir_diurn, swnirdif_diurn              &
+#ifdef RASMCOUPLED
+       ,u0_diurn, v0_diurn                          &
+       ,t0_diurn, qv0_diurn, shum0_diurn            &
+#endif
+       ,ids, ide, jds, jde, kds, kde                &
+       ,ims, ime, jms, jme, kms, kme                &
+       ,ips, ipe, jps, jpe, kps, kpe                & ! patch dims
+       ,i_start, i_end, j_start, j_end              &
        ,num_tiles         )
 
     !----------------------------------------------------------------------
     ! USES:
     USE module_utility
     USE module_domain, ONLY : domain_clock_get
+    USE module_state_description, ONLY: num_moist, p_qv
 
     IMPLICIT NONE
     !======================================================================
@@ -356,7 +491,14 @@ CONTAINS
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: hfx, lh
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swdnb, glw, lwupb, swupb
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swupt, swdnt, lwupt, lwdnt
-    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: t, p, pb, moist
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: raincv, rainncv, rainshv
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  :: swvisdir, swvisdif, swnirdir,swnirdif
+#ifdef RASMCOUPLED
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: u, v
+#endif
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), INTENT(IN) :: t, p, pb, p8w
+    REAL, DIMENSION( ims:ime , kms:kme, jms:jme, num_moist ), INTENT(IN):: moist
+
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: psfc_dtmp, tsk_dtmp 
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: t2_dtmp
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: th2_dtmp, q2_dtmp
@@ -366,6 +508,14 @@ CONTAINS
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: lwupb_dtmp, swupb_dtmp
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swupt_dtmp, swdnt_dtmp
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: lwupt_dtmp, lwdnt_dtmp   
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: raincv_dtmp, rainncv_dtmp, rainshv_dtmp
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: iwp_dtmp, lwp_dtmp, pwv_dtmp
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swvisdir_dtmp, swvisdif_dtmp
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: swnirdir_dtmp, swnirdif_dtmp
+#ifdef RASMCOUPLED
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: u0_dtmp, v0_dtmp
+    REAL, DIMENSION( ims:ime , jms:jme ), INTENT(OUT) :: t0_dtmp, qv0_dtmp, shum0_dtmp
+#endif
    
     REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: psfc_diurn, tsk_diurn
     REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: t2_diurn    
@@ -376,7 +526,14 @@ CONTAINS
     REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: lwupb_diurn, swupb_diurn 
     REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: swupt_diurn, swdnt_diurn 
     REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: lwupt_diurn, lwdnt_diurn 
-
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: raincv_diurn, rainncv_diurn, rainshv_diurn
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: iwp_diurn, lwp_diurn, pwv_diurn
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: swvisdir_diurn, swvisdif_diurn
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: swnirdir_diurn, swnirdif_diurn
+#ifdef RASMCOUPLED
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: u0_diurn, v0_diurn
+    REAL, DIMENSION( ims:ime, 1:NUM_DIURN_CYCLES, jms:jme ), INTENT(OUT) :: t0_diurn, qv0_diurn, shum0_diurn
+#endif
     ! LOCAL  VAR
     INTEGER     :: i, j, k, ij
     REAL        :: value
@@ -390,6 +547,8 @@ CONTAINS
     LOGICAL     :: is_diurnal_reset       ! reset dirurnal cycle
     LOGICAL     :: compute_avg            ! compute averages
     LOGICAL     :: compute_diurnalcycle   ! compute dirurnal cycle
+
+    REAL, DIMENSION( ims:ime , jms:jme ) :: raincv_rt, rainncv_rt, rainshv_rt  ! precip rates
 
     ! DEBUG LOCAL  VAR
     CHARACTER (LEN=1024)  :: message
@@ -436,6 +595,25 @@ CONTAINS
                 swdnt_dtmp(i,j)=0.0
                 lwupt_dtmp(i,j)=0.0
                 lwdnt_dtmp(i,j)=0.0
+                raincv_dtmp(i,j)=0.0
+                rainncv_dtmp(i,j)=0.0
+                rainshv_dtmp(i,j)=0.0
+                iwp_dtmp(i,j)=0.0
+                lwp_dtmp(i,j)=0.0
+                pwv_dtmp(i,j)=0.0
+                swvisdir_dtmp(i,j)=0.0
+                swvisdif_dtmp(i,j)=0.0
+                swnirdir_dtmp(i,j)=0.0
+                swnirdif_dtmp(i,j)=0.0
+#ifdef RASMCOUPLED
+                u0_dtmp(i,j)=0.0
+                v0_dtmp(i,j)=0.0
+                u0_dtmp(i+1,j)=0.0
+                v0_dtmp(i,j+1)=0.0
+                t0_dtmp(i,j)=0.0
+                qv0_dtmp(i,j)=0.0
+                shum0_dtmp(i,j)=0.0
+#endif
              ENDDO
           ENDDO
        ENDDO
@@ -472,6 +650,25 @@ CONTAINS
                    swdnt_diurn(i,k,j)=0.0
                    lwupt_diurn(i,k,j)=0.0
                    lwdnt_diurn(i,k,j)=0.0
+                   raincv_diurn(i,k,j)=0.0
+                   rainncv_diurn(i,k,j)=0.0
+                   rainshv_diurn(i,k,j)=0.0
+                   iwp_diurn(i,k,j)=0.0
+                   lwp_diurn(i,k,j)=0.0
+                   pwv_diurn(i,k,j)=0.0
+                   swvisdir_diurn(i,k,j)=0.0
+                   swvisdif_diurn(i,k,j)=0.0
+                   swnirdir_diurn(i,k,j)=0.0
+                   swnirdif_diurn(i,k,j)=0.0
+#ifdef RASMCOUPLED
+                   u0_diurn(i,k,j)=0.0
+                   v0_diurn(i,k,j)=0.0
+                   u0_diurn(i+1,k,j)=0.0
+                   v0_diurn(i,k,j+1)=0.0
+                   t0_diurn(i,k,j)=0.0
+                   qv0_diurn(i,k,j)=0.0
+                   shum0_diurn(i,k,j)=0.0
+#endif
                 ENDDO
              ENDDO
           ENDDO
@@ -486,6 +683,11 @@ CONTAINS
     ENDIF
     
     avg_nsteps = avg_nsteps+1.0
+
+    ! calculate the rate variables (precip)
+    raincv_rt  = raincv/dt
+    rainncv_rt = rainncv/dt
+    rainshv_rt = rainshv/dt
 
     ! Surface Pressure
     CALL var_accum_2d(psfc,ime-ims+1,jme-jms+1,psfc_dtmp)
@@ -538,6 +740,48 @@ CONTAINS
     ! DOWNWELLING LONGWAVE FLUX AT TOP
     CALL var_accum_2d(lwdnt,ime-ims+1,jme-jms+1,lwdnt_dtmp)
 
+    ! RAINCV - CUMULUS PRECIPITATION RATE
+    CALL var_accum_2d(raincv_rt,ime-ims+1,jme-jms+1,raincv_dtmp)
+
+    ! RAINNCV - NONCONVECTIVE PRECIPITATION RATE
+    CALL var_accum_2d(rainncv_rt,ime-ims+1,jme-jms+1,rainncv_dtmp)
+
+    ! RAINSHV - SHALLOW CUMULUS PRECIPITATION RATE
+    CALL var_accum_2d(rainshv_rt,ime-ims+1,jme-jms+1,rainshv_dtmp)
+
+    ! IWP:LWP:PWV - AVERAGE COLUMN INTEGRATED QUANTITY 
+    CALL columm_integrated_liqud_ice_accum(ims, ime, jms, jme, kms, kme,   &
+        ide, jde, ips, ipe, jps, jpe, moist, p8w, iwp_dtmp, lwp_dtmp, pwv_dtmp) 
+
+    ! SWVISDIR - SHORTWAVE VIS DIRECT FLUX COMPONENT
+    CALL var_accum_2d(swvisdir,ime-ims+1,jme-jms+1,swvisdir_dtmp)
+
+    ! SWVISDIF - SHORTWAVE VIS DIFFUSE FLUX COMPONENT
+    CALL var_accum_2d(swvisdif,ime-ims+1,jme-jms+1,swvisdif_dtmp)
+
+    ! SWNIRDIR - SHORTWAVE NIR DIRECT FLUX COMPONENT
+    CALL var_accum_2d(swnirdir,ime-ims+1,jme-jms+1,swnirdir_dtmp)
+
+    ! SWNIRIDF - SHORTWAVE NIR DIFFUSE FLUX COMPONENT
+    CALL var_accum_2d(swnirdif,ime-ims+1,jme-jms+1,swnirdif_dtmp)
+
+#ifdef RASMCOUPLED
+    ! U0 - U-COMPONENT OF WIND AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(u, ime-ims+1, kme-kms+1, jme-jms+1, u0_dtmp) 
+
+    ! V0 - U-COMPONENT OF WIND AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(v, ime-ims+1, kme-kms+1, jme-jms+1, v0_dtmp)
+
+    ! T0 - TEMPERATURE AT LOWEST MODEL LEVEL
+    CALL T_accum_01( t, p, pb,  ime-ims+1, kme-kms+1, jme-jms+1, t0_dtmp)  
+
+    ! QV0 - WATER VAPOR MIXING RATIO AT LOWEST MODEL LEVEL
+    CALL var_accum_3d_01(moist(:,:,:,P_QV), ime-ims+1, kme-kms+1, jme-jms+1, qv0_dtmp) 
+
+    ! SHUM0 - SPECIFIC HUMIDITY AT LOWEST MODEL LEVEL
+    CALL shum_accum_01(moist(:,:,:,P_QV), ime-ims+1, kme-kms+1, jme-jms+1, shum0_dtmp)
+#endif
+
     ! get average state
     CALL getAvgState(currentTime, xtime, dt, mean_interval, mean_output_freq, compute_avg, EmptyStr)
     IF (compute_avg) THEN
@@ -558,7 +802,24 @@ CONTAINS
        swdnt_dtmp=swdnt_dtmp/avg_nsteps
        lwupt_dtmp=lwupt_dtmp/avg_nsteps
        lwdnt_dtmp=lwdnt_dtmp/avg_nsteps
-       
+       raincv_dtmp=raincv_dtmp/avg_nsteps
+       rainncv_dtmp=rainncv_dtmp/avg_nsteps
+       rainshv_dtmp=rainshv_dtmp/avg_nsteps
+       iwp_dtmp=iwp_dtmp/avg_nsteps
+       lwp_dtmp=lwp_dtmp/avg_nsteps
+       pwv_dtmp=pwv_dtmp/avg_nsteps
+       swvisdir_dtmp=swvisdir_dtmp/avg_nsteps
+       swvisdif_dtmp=swvisdif_dtmp/avg_nsteps
+       swnirdir_dtmp=swnirdir_dtmp/avg_nsteps
+       swnirdif_dtmp=swnirdif_dtmp/avg_nsteps
+#ifdef RASMCOUPLED
+       u0_dtmp=u0_dtmp/avg_nsteps
+       v0_dtmp=v0_dtmp/avg_nsteps
+       t0_dtmp=t0_dtmp/avg_nsteps
+       qv0_dtmp=qv0_dtmp/avg_nsteps
+       shum0_dtmp=shum0_dtmp/avg_nsteps
+#endif
+
        CALL get_diurn_cycle(currentTime, xtime, dt, current_diurn_cycle)
        ! accummulate averages, increment counter by one
        CALL var_accum_diurnal(psfc_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, psfc_diurn) 
@@ -578,7 +839,24 @@ CONTAINS
        CALL var_accum_diurnal(swdnt_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, swdnt_diurn) 
        CALL var_accum_diurnal(lwupt_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, lwupt_diurn) 
        CALL var_accum_diurnal(lwdnt_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, lwdnt_diurn) 
-       
+       CALL var_accum_diurnal(raincv_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, raincv_diurn)
+       CALL var_accum_diurnal(rainncv_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, rainncv_diurn)
+       CALL var_accum_diurnal(rainshv_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, rainshv_diurn)
+       CALL var_accum_diurnal(iwp_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, iwp_diurn)
+       CALL var_accum_diurnal(lwp_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, lwp_diurn)
+       CALL var_accum_diurnal(pwv_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, pwv_diurn) 
+       CALL var_accum_diurnal(swvisdir_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, swvisdir_diurn) 
+       CALL var_accum_diurnal(swvisdif_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, swvisdif_diurn) 
+       CALL var_accum_diurnal(swnirdir_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, swnirdir_diurn) 
+       CALL var_accum_diurnal(swnirdif_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, swnirdif_diurn)       
+#ifdef RASMCOUPLED
+       CALL var_accum_diurnal(u0_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, u0_diurn)
+       CALL var_accum_diurnal(v0_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, v0_diurn)
+       CALL var_accum_diurnal(t0_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, t0_diurn)
+       CALL var_accum_diurnal(qv0_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, qv0_diurn)
+       CALL var_accum_diurnal(shum0_dtmp, ime-ims+1,  NUM_DIURN_CYCLES, jme-jms+1, current_diurn_cycle, shum0_diurn)
+#endif
+
        ! increment diurnal count once a day, assuming 3hr cycles 
        if (current_diurn_cycle .eq. 8) then
           diurnal_nsteps = diurnal_nsteps + 1.0
@@ -606,6 +884,23 @@ CONTAINS
        swdnt_diurn=swdnt_diurn/diurnal_nsteps
        lwupt_diurn=lwupt_diurn/diurnal_nsteps
        lwdnt_diurn=lwdnt_diurn/diurnal_nsteps
+       raincv_diurn=raincv_diurn/diurnal_nsteps
+       rainncv_diurn=rainncv_diurn/diurnal_nsteps
+       rainshv_diurn=rainshv_diurn/diurnal_nsteps
+       iwp_diurn=iwp_diurn/diurnal_nsteps
+       lwp_diurn=lwp_diurn/diurnal_nsteps
+       pwv_diurn=pwv_diurn/diurnal_nsteps 
+       swvisdir_diurn=swvisdir_diurn/diurnal_nsteps
+       swvisdif_diurn=swvisdif_diurn/diurnal_nsteps
+       swnirdir_diurn=swnirdir_diurn/diurnal_nsteps
+       swnirdif_diurn=swnirdif_diurn/diurnal_nsteps
+#ifdef RASMCOUPLED
+       u0_diurn=u0_diurn/diurnal_nsteps
+       v0_diurn=v0_diurn/diurnal_nsteps
+       t0_diurn=t0_diurn/diurnal_nsteps
+       qv0_diurn=qv0_diurn/diurnal_nsteps
+       shum0_diurn=shum0_diurn/diurnal_nsteps
+#endif
 
        CALL WRFU_AlarmRingerOn (avgOutAlarm, rc=rc)
       
@@ -650,65 +945,95 @@ CONTAINS
 
   END SUBROUTINE var_accum_2d
 
-  SUBROUTINE var_accum_3d_01(ims, ime, jms, jme, kms, kme,    &
-                             ide, jde, ips, ipe, jps, jpe,    &
-                             var, var_accum) 
+  SUBROUTINE var_accum_3d_01(var, dx, dz, dy, var_accum) 
     ! Subroutine accumulates 3D variable at lowest level resulting in 2D output
 
     IMPLICIT NONE
 
-    INTEGER, INTENT(IN) :: ims, ime, jms, jme, kms, kme
-    INTEGER, INTENT(IN) :: ide, jde, ips, ipe, jps, jpe
+    INTEGER, INTENT(IN)                      :: dx, dy, dz
+    REAL, DIMENSION(dx, dz, dy), INTENT(IN)  :: var
+    REAL, DIMENSION(dx, dy), INTENT(INOUT)   :: var_accum
 
-    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: var
-    REAL, DIMENSION(ims:ime , jms:jme), INTENT(INOUT) :: var_accum
-    
     !local
-    INTEGER              :: k, i, j, j_end, i_end
-    CHARACTER (LEN=1024) :: message
+    INTEGER :: k, i, j
 
-    j_end = jpe
-    i_end = ipe
-    if(j_end.eq.jde) j_end=j_end-1
-    if(i_end.eq.ide) i_end=i_end-1
-
-    k=1 ! lowest level 
-    DO j=jps, j_end            
-       DO i=ips, i_end
+    k = 1 ! lowest level
+    DO j=1,dy
+       DO i=1,dx
           var_accum(i,j) = var_accum(i,j) + var(i,k,j)
        ENDDO
     ENDDO
  
   END SUBROUTINE var_accum_3d_01
 
-  SUBROUTINE shum_accum_01(ims, ime, jms, jme, kms, kme,    &
-                           ide, jde, ips, ipe, jps, jpe,    &
-                           moist, var_accum) 
-    ! Subroutine accumulates specific humidity at lowest level resulting in 2D output
-
+  SUBROUTINE columm_integrated_liqud_ice_accum(ims, ime, jms, jme, kms, kme, ide, jde, &
+       ips, ipe, jps, jpe, moist, p8w, iwp_accum, lwp_accum, pwv_accum)
+    
+    ! Subroutine accumulates IWP, LWP & PWV calulating values ove column from the first eta
+    ! layer to model top
+    USE module_model_constants, only: g
+    USE module_state_description,  ONLY: num_moist, p_qv, p_qc, p_qi, p_qg, p_qs, p_qh
+    
     IMPLICIT NONE
 
     INTEGER, INTENT(IN) :: ims, ime, jms, jme, kms, kme
     INTEGER, INTENT(IN) :: ide, jde, ips, ipe, jps, jpe
 
-    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: moist
-    REAL, DIMENSION(ims:ime , jms:jme), INTENT(INOUT) :: var_accum
-
+    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme, num_moist ), INTENT(IN):: moist
+    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: p8w
+    REAL, DIMENSION(ims:ime , jms:jme), INTENT(INOUT) :: iwp_accum, lwp_accum, pwv_accum
+    
     !local
-    REAL :: tmp_shum
-    INTEGER              :: k, i, j, j_end, i_end
+    INTEGER              :: k, i, j, nz, j_end, i_end, k_end
+    REAL                 :: iwp, lwp, pwv
     CHARACTER (LEN=1024) :: message
+
 
     j_end = jpe
     i_end = ipe
     if(j_end.eq.jde) j_end=j_end-1
     if(i_end.eq.ide) i_end=i_end-1
+    nz=kme-kms+1  
 
-    k=1 ! lowest level 
     DO j=jps, j_end            
        DO i=ips, i_end
-          if( moist(i,k,j) .gt. 0 ) then
-             tmp_shum = moist(i,k,j) / (1+moist(i,k,j)) 
+          iwp = 0
+          lwp = 0
+          pwv = 0
+          DO k=1, nz
+             iwp = ( moist(i,k,j, P_QI) + moist(i,k,j,P_QG) + moist(i,k,j,P_QS) + moist(i,k,j,P_QH) ) * ( p8w(i,k,j)-p8w(i,k+1,j) ) / g
+             iwp_accum(i,j) =  iwp_accum(i,j) + iwp
+      
+             lwp = moist(i,k,j,P_QC) * ( p8w(i,k,j)-p8w(i,k+1,j) ) / g
+             lwp_accum(i,j) = lwp_accum(i,j) + lwp
+          
+             pwv = moist(i,k,j,P_QV) * ( p8w(i,k,j)-p8w(i,k+1,j) ) / g
+             pwv_accum(i,j) = pwv_accum(i,j) + pwv
+             
+          ENDDO
+       ENDDO
+    ENDDO
+ 
+  END SUBROUTINE columm_integrated_liqud_ice_accum
+
+  SUBROUTINE shum_accum_01(qv, dx, dz, dy, var_accum) 
+    ! Subroutine accumulates specific humidity at lowest level resulting in 2D output
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN)                      :: dx, dy, dz
+    REAL, DIMENSION(dx, dz, dy), INTENT(IN)  :: qv
+    REAL, DIMENSION(dx, dy), INTENT(INOUT)   :: var_accum
+
+    !local
+    INTEGER :: k, i, j
+    REAL :: tmp_shum
+    
+    k = 1 ! lowest level
+    DO j=1,dy
+       DO i=1,dx
+          if( qv(i,k,j) .gt. 0 ) then
+             tmp_shum = qv(i,k,j) / (1+qv(i,k,j)) 
           else
              tmp_shum = 0.0
           endif
@@ -718,9 +1043,7 @@ CONTAINS
  
   END SUBROUTINE shum_accum_01
 
-  SUBROUTINE T_accum_01( ims, ime, jms, jme, kms, kme,    &
-                         ide, jde, ips, ipe, jps, jpe,    &
-                         t, p, pb, t_accum) 
+  SUBROUTINE T_accum_01( t, p, pb, dx, dz, dy, t_accum) 
     ! Subroutine accumulates Temperature at lowest level resulting in 2D output
    
     USE module_model_constants, only: t0,p0
@@ -728,28 +1051,20 @@ CONTAINS
 
     IMPLICIT NONE
 
-    INTEGER, INTENT(IN) :: ims, ime, jms, jme, kms, kme
-    INTEGER, INTENT(IN) :: ide, jde, ips, ipe, jps, jpe
-
-    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: t, p, pb
-    REAL, DIMENSION(ims:ime , jms:jme), INTENT(INOUT) :: t_accum
-
+    INTEGER, INTENT(IN)                      :: dx, dy, dz
+    REAL, DIMENSION(dx, dz, dy), INTENT(IN)  :: t, p, pb
+    REAL, DIMENSION(dx, dy), INTENT(INOUT)   :: t_accum
+    
     ! local
-    REAL     :: t_tmp, cp, rd
-    INTEGER              :: k, i, j, j_end, i_end
-    CHARACTER (LEN=1024) :: message
+    REAL       :: t_tmp, cp, rd
+    INTEGER    :: k, i, j
 
     rd=SHR_CONST_RDAIR
     cp=SHR_CONST_CPDAIR
 
-    j_end = jpe
-    i_end = ipe
-    if(j_end.eq.jde) j_end=j_end-1
-    if(i_end.eq.ide) i_end=i_end-1
-
-    k=1 ! lowest level 
-    DO j=jps, j_end            
-       DO i=ips, i_end
+    k = 1 ! lowest level
+    DO j=1,dy
+       DO i=1,dx
           ! calulate surface tempature at lowest level
           t_tmp = (t(i,k,j) + t0) * (((p(i,k,j) + pb(i,k,j))/p0) ** (rd/cp))
           ! accumulate surface tempature at lowest level
@@ -759,10 +1074,9 @@ CONTAINS
 
   END SUBROUTINE T_accum_01
 
-
   SUBROUTINE PMSL_accum_01( ims, ime, jms, jme, kms, kme,    &
                             ide, jde, ips, ipe, jps, jpe,    &
-                            t, p, pb, moist, ht, psfc, pmsl_accum)
+                            t, p, pb, qv, ht, psfc, pmsl_accum)
     ! Subroutine calculates and accumulates PMSL resulting in 2D output
    
     USE module_model_constants, only: t0,p0
@@ -773,7 +1087,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: ims, ime, jms, jme, kms, kme
     INTEGER, INTENT(IN) :: ide, jde, ips, ipe, jps, jpe
 
-    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: t, p, pb, moist
+    REAL, DIMENSION(  ims:ime , kms:kme, jms:jme ), INTENT(IN):: t, p, pb, qv
     REAL, DIMENSION(  ims:ime , jms:jme ), INTENT(IN):: ht, psfc
     REAL, DIMENSION(ims:ime , jms:jme), INTENT(INOUT) :: pmsl_accum
 
@@ -801,7 +1115,7 @@ CONTAINS
              t_tmp = (t(i,k,j) + t0) * (((p(i,k,j) + pb(i,k,j))/p0) ** (rd/cp))
                   
              ! calculate virtual temperature at lowest model level
-             tv = t_tmp * (1 + moist(i,k,j) * 0.61)
+             tv = t_tmp * (1 + qv(i,k,j) * 0.61)
 
              ! Calculate geopotential at surface in m2 s-2
              z = ht(i,j) * g ! terrain height in m
