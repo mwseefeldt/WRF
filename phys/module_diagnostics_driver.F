@@ -1127,7 +1127,7 @@ CONTAINS
            ,SWVISDIR_DIURN=grid%SWVISDIR_DIURN                                &
            ,SWVISDIF_DIURN=grid%SWVISDIF_DIURN                                &
            ,SWNIRDIR_DIURN=grid%SWNIRDIR_DIURN                                &
-           ,SWNIRDIF_DIURN=grid%SNNIRDIF_DIURN                                &
+           ,SWNIRDIF_DIURN=grid%SWNIRDIF_DIURN                                &
 #ifdef RASMCOUPLED
            ,U0_DIURN=grid%U0_DIURN, V0_DIURN=grid%V0_DIURN                    &
            ,T0_DIURN=grid%T0_DIURN                                            &
