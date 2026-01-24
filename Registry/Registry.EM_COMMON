@@ -2671,7 +2671,7 @@ rconfig   integer use_mp_re               namelist,physics     	1              1
 rconfig   logical insert_init_cloud       namelist,physics      1              .false. irh   "insert_init_cloud" "Insert diagnostic initial cloud using icloud=3 method (Thompson)"  "logical flag"
 
 # setting to activate coupling of Morrison microphysics effective radii to radiation
-rconfig   integer cpl_rad_mp              namelist,physics      1              0       -     "cpl_rad_mp"   "Coupled radiation-microphysics option"
+rconfig   integer cpl_rad_mp              namelist,physics      1              0       rh     "cpl_rad_mp"   "Coupled radiation-microphysics option"
 
 # The following two options are hooked into various microphysics schemes to allow for ensemble perturbations of CCN and hail/graupel PSDs - GAC (AFWA)
 rconfig   real    ccn_conc                namelist,physics      1           1.0E8      h     "ccn_conc"                 "CCN concentration"                                                             "# m-3"
